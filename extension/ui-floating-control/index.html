@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cap Me Action Dock</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg-color: #ffffff;
+        --surface-2: #f5f8fb;
+        --border-color: #ccd6e2;
+        --text-main: #16202b;
+        --text-muted: #627487;
+        --accent: #24599b;
+        --accent-hover: #18477d;
+        --danger: #b42318;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        overflow: hidden;
+      }
+
+      .dock-root {
+        display: flex;
+        align-items: center;
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        padding: 5px 8px;
+        box-shadow: 0 8px 20px rgba(23, 37, 52, 0.18);
+        gap: 8px;
+        height: 42px;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        width: 100%;
+      }
+
+      .drag-handle {
+        cursor: grab;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+      }
+
+      .drag-handle:hover {
+        background: var(--surface-2);
+        color: var(--text-main);
+      }
+
+      .drag-handle:active {
+        cursor: grabbing;
+      }
+
+      .recording-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--danger);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+        70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+      }
+
+      .stats {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-main);
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        font-size: 12px;
+      }
+
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .stat-icon {
+        color: var(--text-muted);
+      }
+
+      .divider {
+        width: 1px;
+        height: 18px;
+        background: var(--border-color);
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        margin-left: auto;
+      }
+
+      .btn {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--text-main);
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        padding: 0;
+      }
+
+      .btn:hover {
+        border-color: var(--border-color);
+        background: var(--surface-2);
+      }
+
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+
+      .btn.primary:hover {
+        background: var(--accent-hover);
+      }
+
+      .toast {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(10px);
+        background: var(--text-main);
+        color: var(--bg-color);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 500;
+        pointer-events: none;
+        opacity: 0;
+        transition: all 0.2s;
+        white-space: nowrap;
+        margin-bottom: 8px;
+      }
+
+      .toast.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+
+      .dock-root.minimized .stats,
+      .dock-root.minimized .divider,
+      .dock-root.minimized .btn:not(.minimize-btn) {
+        display: none;
+      }
+
+      .dock-root.minimized {
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="dockRoot" class="dock-root">
+      <div id="dockToast" class="toast"></div>
+      
+      <div id="dockDragHandle" class="drag-handle" title="Drag to move">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+      </div>
+
+      <div class="recording-indicator" title="Recording in progress"></div>
+
+      <div class="stats">
+        <div class="stat-item" title="Duration">
+          <svg class="stat-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span id="dockTimer">00:00</span>
+        </div>
+        <div class="stat-item" title="Steps captured">
+          <svg class="stat-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          <span id="dockStepCount">0</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="actions">
+        <button id="dockPause" class="btn" title="Pause / Resume (Alt+Shift+R)">
+          <span id="dockPauseIcon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+          </span>
+        </button>
+        <button id="dockDiscard" class="btn" title="Discard last step (Alt+Shift+Z)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+        </button>
+        <button id="dockFinish" class="btn primary" title="Finish recording">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </button>
+        <div class="divider" style="margin: 0 4px; height: 16px;"></div>
+        <button id="dockMinimize" class="btn minimize-btn" title="Minimize / Expand (Alt+Shift+M)">
+          <span id="dockMinimizeIcon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+          </span>
+        </button>
+      </div>
+    </div>
+    <script src="dock.js"></script>
+  </body>
+</html>

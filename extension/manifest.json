@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "Cap Me Action Recorder",
+  "version": "0.0.1",
+  "description": "MV3 scaffold for capturing browser actions.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "activeTab",
+    "identity",
+    "identity.email",
+    "alarms"
+  ],
+  "host_permissions": [
+    "http://localhost/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*",
+    "https://www.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "REPLACE_WITH_YOUR_CHROME_EXTENSION_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email"
+    ]
+  },
+  "action": {
+    "default_popup": "ui-record-popup/index.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "ui-floating-control/index.html",
+        "ui-floating-control/dock.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content-script.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
