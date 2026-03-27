@@ -118,14 +118,12 @@ body {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--mark-bg);
-  color: var(--accent-strong);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  box-shadow: var(--shadow-sm);
+}
+
+.app-topbar__mark-image {
+  display: block;
+  width: 40px;
+  height: 40px;
 }
 
 .app-topbar__title {
@@ -238,6 +236,50 @@ body {
   align-items: start;
 }
 
+.team-mode-shell {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+}
+
+.team-mode-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 280px) minmax(260px, 1fr);
+}
+
+.team-mode-grid__auth {
+  grid-column: 1;
+}
+
+.team-mode-grid__endpoint {
+  grid-column: 2;
+}
+
+.team-mode-grid__token {
+  grid-column: 1 / -1;
+}
+
+.team-mode-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
+  align-items: end;
+}
+
+.team-mode-actions .app-button {
+  min-width: 150px;
+}
+
+.team-mode-actions .app-select {
+  min-width: 0;
+}
+
 .import-note {
   flex: 1 1 100%;
   margin-top: 0;
@@ -249,6 +291,13 @@ body {
   line-height: 1.6;
   color: var(--muted-strong);
   overflow-wrap: anywhere;
+}
+
+.import-note--team {
+  margin-top: 2px;
+  padding: 7px 10px;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .control-group {
@@ -777,6 +826,17 @@ body {
 
   .import-shell__hero {
     flex-direction: column;
+  }
+
+  .team-mode-grid,
+  .team-mode-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .team-mode-grid__auth,
+  .team-mode-grid__endpoint,
+  .team-mode-grid__token {
+    grid-column: auto;
   }
 
   .import-footer {

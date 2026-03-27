@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Cap Me Action framed checklist mark</title>
+  <desc id="desc">A simplified framed checklist mark optimized for small icon sizes.</desc>
+
+  <path d="M96 150v-32c0-10 8-18 18-18h44" fill="none" stroke="#24599b" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M416 150v-32c0-10-8-18-18-18h-44" fill="none" stroke="#24599b" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M96 362v32c0 10 8 18 18 18h44" fill="none" stroke="#24599b" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M416 362v32c0 10-8 18-18 18h-44" fill="none" stroke="#24599b" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <circle cx="146" cy="165" r="22" fill="#ef4444"/>
+
+  <path d="M192 126h118l42 42v184c0 18-14 32-32 32H192c-18 0-32-14-32-32V158c0-18 14-32 32-32z" fill="#ffffff" stroke="#18477d" stroke-width="20" stroke-linejoin="round"/>
+  <path d="M310 126v42h42" fill="none" stroke="#24599b" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M208 214l20 20 36-38" fill="none" stroke="#18477d" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M208 278l20 20 36-38" fill="none" stroke="#18477d" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M208 342l20 20 36-38" fill="none" stroke="#18477d" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M292 224h34" fill="none" stroke="#24599b" stroke-width="20" stroke-linecap="round"/>
+  <path d="M292 288h34" fill="none" stroke="#24599b" stroke-width="20" stroke-linecap="round"/>
+  <path d="M292 352h34" fill="none" stroke="#24599b" stroke-width="20" stroke-linecap="round"/>
+</svg>

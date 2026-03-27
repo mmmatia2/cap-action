@@ -18,6 +18,14 @@ Historical entries may mention paths that were intentionally removed from the pu
   - Added media placeholder guide at `docs/media/README.md`.
   - Added minimal `.env.example` clarifying local-first flow does not require env vars.
 
+## 2026-03-27
+
+- Screenshot-readiness polish pass:
+  - Simplified editor import/landing copy so local mode reads as the clear product default and legacy team adapter messaging is less dominant.
+  - Upgraded bundled sample payload visuals by adding representative screenshot data for demo steps.
+  - Refined popup information hierarchy so team sync and local-dev checks are secondary under an optional advanced section.
+  - Added app favicon for cleaner browser/tab presentation in capture media.
+
 ## 2026-03-06
 
 - Hardening stage: remote team-library flow is now frozen into repo-backed artifacts.

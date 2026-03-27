@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cap Me Action Recorder</title>
+    <title>Cap Me Action</title>
     <link rel="stylesheet" href="../shared-ui/tokens.css" />
     <style>
       * { box-sizing: border-box; }
@@ -41,18 +41,17 @@
       .logo {
         width: 34px;
         height: 34px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: linear-gradient(180deg, #f9fbfd 0%, #e9eef5 100%);
-        color: var(--accent-strong);
+        border-radius: 9px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
-        font-size: 11px;
-        letter-spacing: 0.08em;
         flex-shrink: 0;
-        box-shadow: var(--shadow-sm);
+      }
+
+      .logo img {
+        display: block;
+        width: 34px;
+        height: 34px;
       }
 
       .title-container {
@@ -74,10 +73,10 @@
       }
 
       .main-content {
-        padding: 18px;
+        padding: 16px;
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 10px;
         flex: 1 1 auto;
         overflow-y: auto;
         overscroll-behavior: contain;
@@ -85,7 +84,7 @@
 
       .capture-btn {
         width: 100%;
-        padding: 16px;
+        padding: 14px;
         border: 1px solid var(--accent);
         border-radius: var(--radius-lg);
         background: linear-gradient(180deg, var(--accent) 0%, var(--accent-strong) 100%);
@@ -139,7 +138,7 @@
       .actions-grid {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
       }
 
       .status-panel {
@@ -176,6 +175,60 @@
         padding: 9px 10px;
       }
 
+      .advanced-panel {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: rgba(255, 255, 255, 0.62);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+      }
+
+      .advanced-panel summary {
+        list-style: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted-strong);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .advanced-panel summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .advanced-panel summary::after {
+        content: "Show";
+        color: var(--muted);
+        text-transform: none;
+        letter-spacing: normal;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .advanced-panel[open] summary::after {
+        content: "Hide";
+      }
+
+      .advanced-panel__body {
+        padding: 0 12px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .advanced-note {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
       .action-btn {
         display: flex;
         align-items: center;
@@ -202,8 +255,7 @@
       .section-header {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        margin: 4px 0 0;
+        margin: 2px 0 0;
       }
 
       .section-title {
@@ -215,21 +267,11 @@
         margin: 0;
       }
 
-      .view-all {
-        background: none;
-        border: none;
-        color: var(--accent);
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        padding: 0;
-      }
-
       .recent-list {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        padding: 12px;
+        padding: 10px;
         background: rgba(255, 255, 255, 0.72);
         border: 1px solid var(--border);
         border-radius: var(--radius-lg);
@@ -300,10 +342,10 @@
       }
 
       .footer {
-        padding: 12px 18px 16px;
+        padding: 10px 16px 12px;
         border-top: 1px solid var(--border);
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-end;
         align-items: center;
         background: rgba(255, 255, 255, 0.76);
         flex-shrink: 0;
@@ -323,11 +365,24 @@
         color: var(--text);
       }
 
-      .footer-note {
+      .footer-icon-btn {
+        width: 30px;
+        height: 30px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         color: var(--muted);
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+        background: var(--surface);
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .footer-icon-btn:hover {
+        color: var(--text);
+        border-color: var(--border-strong);
+        background: var(--surface-2);
       }
 
       .keyboard-hints {
@@ -350,7 +405,7 @@
   <body>
     <div class="popup">
       <header class="header">
-        <div class="logo">CM</div>
+        <div class="logo"><img src="../icons/icon-mark.svg" alt="Cap Me Action icon" /></div>
         <div class="title-container">
           <h1 class="title">Cap Me Action</h1>
           <p class="subtitle">Capture browser workflows and open them in the editor.</p>
@@ -374,33 +429,30 @@
             <span>Open Last Capture in Editor</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
           </button>
-          <button id="syncNow" class="action-btn" type="button">
-            <span>Sync Last Capture Now</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><polyline points="21 3 21 9 15 9"></polyline></svg>
-          </button>
-          <button id="checkLocalEditor" class="action-btn" type="button">
-            <span>Check Local Editor</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"></path><path d="M12 16v6"></path><path d="m4.93 4.93 4.24 4.24"></path><path d="m14.83 14.83 4.24 4.24"></path><path d="M2 12h6"></path><path d="M16 12h6"></path><path d="m4.93 19.07 4.24-4.24"></path><path d="m14.83 9.17 4.24-4.24"></path></svg>
-          </button>
-          <button id="downloadLastJson" class="action-btn" type="button">
-            <span>Download JSON</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          </button>
         </div>
 
-        <div class="status-panel">
-          <p class="section-title">Team Sync</p>
-          <p id="authStateText" class="status-line muted">Auth: checking...</p>
-          <p id="syncStateText" class="status-line muted">Sync: checking...</p>
-          <div class="inline-actions">
-            <button id="syncSignIn" class="action-btn" type="button">Sign In</button>
-            <button id="syncSignOut" class="action-btn" type="button">Sign Out</button>
+        <details class="advanced-panel">
+          <summary>Advanced Tools (Optional)</summary>
+          <div class="advanced-panel__body">
+            <p class="advanced-note">Use team sync after polishing SOPs in the editor. Raw captures are best kept local.</p>
+            <div class="status-panel">
+              <p class="section-title">Team Sync</p>
+              <p id="authStateText" class="status-line muted">Auth: checking...</p>
+              <p id="syncStateText" class="status-line muted">Sync: checking...</p>
+              <div class="inline-actions">
+                <button id="syncSignIn" class="action-btn" type="button">Sign In</button>
+                <button id="syncSignOut" class="action-btn" type="button">Sign Out</button>
+              </div>
+              <button id="checkLocalEditor" class="action-btn" type="button">
+                <span>Check Local Dev Editor</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"></path><path d="M12 16v6"></path><path d="m4.93 4.93 4.24 4.24"></path><path d="m14.83 14.83 4.24 4.24"></path><path d="M2 12h6"></path><path d="M16 12h6"></path><path d="m4.93 19.07 4.24-4.24"></path><path d="m14.83 9.17 4.24-4.24"></path></svg>
+              </button>
+            </div>
           </div>
-        </div>
+        </details>
 
         <div class="section-header">
           <h2 class="section-title">Recent Captures</h2>
-          <button id="openInspector" class="view-all" type="button">Advanced</button>
         </div>
         
         <div id="recentCaptureList" class="recent-list">
@@ -409,8 +461,15 @@
       </main>
 
       <footer class="footer">
-        <button id="openInspectorFooter" class="footer-btn" type="button">Diagnostics & Advanced Settings</button>
-        <span class="footer-note">Hosted editor default</span>
+        <button
+          id="openInspectorFooter"
+          class="footer-icon-btn"
+          type="button"
+          title="Open advanced diagnostics and configuration"
+          aria-label="Open advanced diagnostics and configuration"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.02a1.65 1.65 0 0 0 .98-1.5V3a2 2 0 1 1 4 0v.09c0 .68.4 1.3 1.02 1.57.62.26 1.34.12 1.82-.35l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.48.48-.61 1.2-.35 1.82.27.62.9 1.02 1.57 1.02H21a2 2 0 1 1 0 4h-.09c-.68 0-1.3.4-1.51 1z"></path></svg>
+        </button>
       </footer>
     </div>
 

@@ -71,8 +71,23 @@ No `.env` variables are required for the basic local-first flow.
 
 ## Screenshots / demo media
 
-- Planned media location: [`docs/media/`](docs/media/README.md)
-- This repository currently does not include polished release screenshots/video yet.
+### Extension popup
+
+![Cap Me Action popup capture](docs/media/popup-capture.png)
+
+### Editor import surface
+
+![Cap Me Action editor import screen](docs/media/editor-import.png)
+
+### Step editing workspace
+
+![Cap Me Action editor step editing workspace](docs/media/editor-step-edit.png)
+
+### Export controls
+
+![Cap Me Action editor export controls](docs/media/editor-export.png)
+
+See [`docs/media/README.md`](docs/media/README.md) for media conventions.
 
 ## Current maturity and limits
 

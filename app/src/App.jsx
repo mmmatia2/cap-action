@@ -1488,7 +1488,7 @@ export default function App() {
       <header className="app-topbar">
         <div className="app-topbar__brand">
           <div className="app-topbar__mark">
-            CM
+            <img src="/favicon.svg" alt="Cap Me Action icon" className="app-topbar__mark-image" />
           </div>
           <div>
             <h1 className="app-topbar__title">Cap Me Action Editor</h1>
@@ -1527,8 +1527,8 @@ export default function App() {
                 <p className="import-shell__eyebrow">Local-First Workflow Editor</p>
                 <h2 className="import-shell__title">Start with local capture artifacts</h2>
                 <p className="import-shell__copy">
-                  Local capture/import/export is the primary product path. Legacy team adapter mode (Google Apps
-                  Script) remains optional while OSS self-hosted team mode is prepared.
+                  Capture locally, refine steps, and export clean SOPs. Team library access is optional and available
+                  through the legacy adapter when needed.
                 </p>
               </div>
               <div className="import-shell__badge">
@@ -1547,8 +1547,8 @@ export default function App() {
                   onChange={(event) => onDataSourceChange(event.target.value)}
                   className="app-select min-w-[180px]"
                 >
-                  <option value="local">Local Only (Primary)</option>
-                  <option value="team">Legacy Team Adapter (Google Apps Script)</option>
+                  <option value="local">Local Mode (Recommended)</option>
+                  <option value="team">Team Library (Legacy Google Adapter)</option>
                   <option value="self_hosted_planned" disabled>
                     Planned: Self-Hosted Team Mode (Not Implemented)
                   </option>
@@ -1598,35 +1598,35 @@ export default function App() {
                     Import Selected
                   </button>
                   <p className="import-note">
-                    Local-only mode is active. Team auth and remote sync are not required for capture/edit/export.
+                    You are in local mode. Capture, edit, and export without team auth.
                   </p>
                 </div>
               ) : (
-                <div className="import-grid import-grid--team w-full">
-                  <div className="control-group min-w-[220px]">
-                    <label className="field-label">Legacy Team Auth Source</label>
-                    <select
-                      value={teamAuthOwner}
-                      onChange={(event) => setTeamAuthOwner(normalizeTeamAuthOwner(event.target.value))}
-                      className="app-select"
-                    >
-                      <option value={TEAM_SYNC_AUTH_OWNERS.extensionLegacy}>Extension Auth (Legacy Adapter Default)</option>
-                      <option value={TEAM_SYNC_AUTH_OWNERS.editor}>Editor Auth (Legacy Transitional)</option>
-                    </select>
-                  </div>
-                  <div className="control-group flex-1 min-w-[240px]">
-                    <label className="field-label">Endpoint URL</label>
-                    <input
-                      type="text"
-                      value={teamApiBase}
-                      placeholder="Apps Script endpoint URL"
-                      onChange={(event) => setTeamApiBase(event.target.value)}
-                      className="app-input"
-                    />
-                  </div>
-                  {teamAuthOwner === TEAM_SYNC_AUTH_OWNERS.editor ? (
-                    <>
-                      <div className="control-group flex-1 min-w-[240px]">
+                <div className="team-mode-shell w-full">
+                  <div className="team-mode-grid">
+                    <div className="control-group team-mode-grid__auth">
+                      <label className="field-label">Auth Source</label>
+                      <select
+                        value={teamAuthOwner}
+                        onChange={(event) => setTeamAuthOwner(normalizeTeamAuthOwner(event.target.value))}
+                        className="app-select"
+                      >
+                        <option value={TEAM_SYNC_AUTH_OWNERS.extensionLegacy}>Extension Auth (Legacy Adapter Default)</option>
+                        <option value={TEAM_SYNC_AUTH_OWNERS.editor}>Editor Auth (Legacy Transitional)</option>
+                      </select>
+                    </div>
+                    <div className="control-group team-mode-grid__endpoint">
+                      <label className="field-label">Endpoint URL</label>
+                      <input
+                        type="text"
+                        value={teamApiBase}
+                        placeholder="Apps Script endpoint URL"
+                        onChange={(event) => setTeamApiBase(event.target.value)}
+                        className="app-input"
+                      />
+                    </div>
+                    {teamAuthOwner === TEAM_SYNC_AUTH_OWNERS.editor ? (
+                      <div className="control-group team-mode-grid__token">
                         <label className="field-label">Editor Access Token (session only)</label>
                         <input
                           type="password"
@@ -1636,53 +1636,56 @@ export default function App() {
                           className="app-input"
                         />
                       </div>
-                    </>
-                  ) : null}
-                  <button 
-                    type="button" 
-                    onClick={loadFromTeamLibrary} 
-                    className="app-button"
-                  >
-                    <Cloud size={16} />
-                    Load Library
-                  </button>
-                  <select
-                    value={selectedTeamSessionId}
-                    onChange={(event) => setSelectedTeamSessionId(event.target.value)}
-                    className="app-select min-w-[260px]"
-                    disabled={!teamSessions.length}
-                  >
-                    {!teamSessions.length ? (
-                      <option value="">No team sessions loaded</option>
-                    ) : (
-                      teamSessions.map((session) => {
-                        const id = session.sessionId || session.id;
-                        const title = session.title || session.lastTitle || session.startTitle || id;
-                        return (
-                          <option key={id} value={id}>
-                            {title}
-                          </option>
-                        );
-                      })
-                    )}
-                  </select>
-                  <button 
-                    type="button" 
-                    onClick={importSelectedTeamSession} 
-                    disabled={!selectedTeamSessionId}
-                    className="app-button app-button--primary"
-                  >
-                    Import Team Session
-                  </button>
+                    ) : null}
+                  </div>
+
+                  <div className="team-mode-actions">
+                    <button
+                      type="button"
+                      onClick={loadFromTeamLibrary}
+                      className="app-button"
+                    >
+                      <Cloud size={16} />
+                      Load Library
+                    </button>
+                    <select
+                      value={selectedTeamSessionId}
+                      onChange={(event) => setSelectedTeamSessionId(event.target.value)}
+                      className="app-select"
+                      disabled={!teamSessions.length}
+                    >
+                      {!teamSessions.length ? (
+                        <option value="">No team sessions loaded</option>
+                      ) : (
+                        teamSessions.map((session) => {
+                          const id = session.sessionId || session.id;
+                          const title = session.title || session.lastTitle || session.startTitle || id;
+                          return (
+                            <option key={id} value={id}>
+                              {title}
+                            </option>
+                          );
+                        })
+                      )}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={importSelectedTeamSession}
+                      disabled={!selectedTeamSessionId}
+                      className="app-button app-button--primary"
+                    >
+                      Import Team Session
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
             {dataSource === "team" && (
-              <p className="import-note">
+              <p className="import-note import-note--team">
                 {teamAuthOwner === TEAM_SYNC_AUTH_OWNERS.editor
-                  ? "Legacy adapter - Editor Auth (Legacy Transitional): manual temporary token mode for migration checks only. Token is in-memory for this tab and sent via POST body (not query string). Future self-hosted web-app auth is not implemented yet."
-                  : "Legacy adapter - Extension Auth (Legacy Adapter Default): team auth comes from extension bridge/popup sign-in for the current Google Apps Script path. Local-only mode remains the primary product flow."}
+                  ? "Legacy adapter: Editor Auth uses a temporary in-memory token for this tab only."
+                  : "Legacy adapter: Extension Auth uses popup sign-in for Google Apps Script team library reads."}
               </p>
             )}
 

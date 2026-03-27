@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Cap Me Action micro icon</title>
+  <desc id="desc">A simplified capture frame with a single check mark for small extension toolbar sizes.</desc>
+  <path d="M48 82V56c0-7 5-12 12-12h30" fill="none" stroke="#24599b" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M208 82V56c0-7-5-12-12-12h-30" fill="none" stroke="#24599b" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M48 174v26c0 7 5 12 12 12h30" fill="none" stroke="#24599b" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M208 174v26c0 7-5 12-12 12h-30" fill="none" stroke="#24599b" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M86 132l32 32 54-58" fill="none" stroke="#18477d" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

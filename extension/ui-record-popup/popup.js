@@ -1,17 +1,12 @@
 // Purpose: wire popup controls to capture/runtime contracts and quick handoff actions.
-// Inputs: popup clicks + chrome.storage state. Outputs: capture toggle, recent list, open-editor/download actions.
-const APP_SCHEMA_VERSION = "1.1.0";
-
+// Inputs: popup clicks + chrome.storage state. Outputs: capture toggle, recent list, editor handoff, advanced diagnostics actions.
 const captureToggle = document.getElementById("captureToggle");
 const captureToggleLabel = document.getElementById("captureToggleLabel");
 const captureStatus = document.getElementById("captureStatus");
 const recentCaptureList = document.getElementById("recentCaptureList");
-const openInspector = document.getElementById("openInspector");
 const openInspectorFooter = document.getElementById("openInspectorFooter");
 const openEditor = document.getElementById("openEditor");
-const syncNow = document.getElementById("syncNow");
 const checkLocalEditor = document.getElementById("checkLocalEditor");
-const downloadLastJson = document.getElementById("downloadLastJson");
 const syncSignIn = document.getElementById("syncSignIn");
 const syncSignOut = document.getElementById("syncSignOut");
 const authStateText = document.getElementById("authStateText");
@@ -57,27 +52,6 @@ function normalizeSyncConfig(value) {
       : [],
     accountEmail: value?.accountEmail ? String(value.accountEmail).trim().toLowerCase() : null
   };
-}
-
-function explainSyncErrorCode(errorCode) {
-  switch (String(errorCode ?? "").trim()) {
-    case "SYNC_DISABLED":
-      return "enable team sync in Advanced Settings";
-    case "SYNC_ENDPOINT_MISSING":
-      return "set endpoint URL in Advanced Settings";
-    case "AUTH_REQUIRED":
-      return "use Sign In in popup";
-    case "AUTH_DENIED":
-      return "confirm account permissions and sign in again";
-    case "TOKEN_EXPIRED":
-      return "sign out and sign in again";
-    case "NETWORK_ERROR":
-      return "verify endpoint/network";
-    case "QUOTA_EXCEEDED":
-      return "check Apps Script/Drive quota";
-    default:
-      return "check advanced sync diagnostics";
-  }
 }
 
 function getAuthStateText(authReady, syncConfig) {
@@ -205,36 +179,6 @@ function getLatestStepBySession(steps) {
   return map;
 }
 
-function getSessionSteps(allSteps, sessionId) {
-  return allSteps
-    .filter((x) => x.sessionId === sessionId)
-    .sort((a, b) => (a.stepIndex ?? 0) - (b.stepIndex ?? 0) || (a.at ?? 0) - (b.at ?? 0));
-}
-
-function buildSessionExport(session, steps) {
-  return {
-    schemaVersion: APP_SCHEMA_VERSION,
-    exportedAt: Date.now(),
-    session,
-    steps,
-    meta: {
-      capturedBy: "unknown",
-      appVersion: chrome.runtime.getManifest().version,
-      syncRevision: Number(session?.sync?.revision ?? 1)
-    }
-  };
-}
-
-function downloadJson(filename, payload) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 async function openEditorForSession(sessionId) {
   const response = await sendRuntimeMessage({
     type: "OPEN_EDITOR",
@@ -345,30 +289,6 @@ async function handleOpenEditor() {
   }
 }
 
-async function handleSyncNow() {
-  const response = await sendRuntimeMessage({ type: "SYNC_LAST_SESSION" });
-  if (!response?.ok) {
-    const code = response?.error || "SYNC_FAILED";
-    captureStatus.textContent = `Sync failed: ${code}. Next step: ${explainSyncErrorCode(code)}.`;
-    await refreshState();
-    return;
-  }
-  const syncStatus = response?.sync?.status ?? "unknown";
-  const errorCode = response?.sync?.errorCode ?? response?.queueItem?.lastErrorCode ?? null;
-  if (syncStatus === "synced") {
-    captureStatus.textContent = "Latest session synced successfully.";
-  } else if (syncStatus === "pending") {
-    captureStatus.textContent = errorCode
-      ? `Sync pending retry (${errorCode}).`
-      : "Sync queued and pending upload.";
-  } else if (syncStatus === "failed" || syncStatus === "blocked") {
-    captureStatus.textContent = `Sync ${syncStatus}${errorCode ? `: ${errorCode}` : ""}.`;
-  } else {
-    captureStatus.textContent = "Sync request sent. Refresh to confirm final status.";
-  }
-  await refreshState();
-}
-
 async function handleSyncSignIn() {
   const response = await sendRuntimeMessage({ type: "AUTH_SIGN_IN" });
   if (!response?.ok) {
@@ -395,21 +315,6 @@ async function handleSyncSignOut() {
   await refreshState();
 }
 
-async function handleDownloadLatestJson() {
-  const store = await getStorage(["sessions", "steps"]);
-  const sessions = store.sessions ?? [];
-  const steps = store.steps ?? [];
-  const latest = getLatestSession(sessions);
-  if (!latest) {
-    captureStatus.textContent = "No captured session available to download.";
-    return;
-  }
-
-  const sessionSteps = getSessionSteps(steps, latest.id);
-  downloadJson(`cap-me-session-${latest.id}.json`, buildSessionExport(latest, sessionSteps));
-  captureStatus.textContent = "Downloaded latest session JSON.";
-}
-
 async function handleRecentSessionOpen(sessionId) {
   const response = await openEditorForSession(sessionId);
   captureStatus.textContent =
@@ -428,26 +333,15 @@ captureToggle.addEventListener("click", () => {
     captureStatus.textContent = "Failed to toggle capture mode.";
   });
 });
-openInspector.addEventListener("click", openInspectorPage);
 openInspectorFooter.addEventListener("click", openInspectorPage);
 openEditor.addEventListener("click", () => {
   handleOpenEditor().catch(() => {
     captureStatus.textContent = "Unable to open editor. Start the app with pnpm dev:app and try again.";
   });
 });
-syncNow.addEventListener("click", () => {
-  handleSyncNow().catch(() => {
-    captureStatus.textContent = "Unable to sync latest session.";
-  });
-});
 checkLocalEditor.addEventListener("click", () => {
   handleCheckLocalEditor().catch(() => {
     captureStatus.textContent = "Local editor check failed. Start the app with pnpm dev:app and try again.";
-  });
-});
-downloadLastJson.addEventListener("click", () => {
-  handleDownloadLatestJson().catch(() => {
-    captureStatus.textContent = "Unable to download latest session.";
   });
 });
 syncSignIn.addEventListener("click", () => {
