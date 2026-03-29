@@ -26,7 +26,7 @@ Thumbs.db
 .vscode/
 
 # Generated docs bundle
-docs/context-bundle.md
+CONTEXT_BUNDLE.md
 
 # Generated internal artifacts
 artifacts/

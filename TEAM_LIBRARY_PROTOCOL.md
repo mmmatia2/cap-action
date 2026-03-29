@@ -26,7 +26,7 @@ This protocol covers:
 2. Extension/web app <-> Google Apps Script backend
 
 It does not redefine local capture/storage contracts.
-It also does not define the future OSS-default self-hosted team backend; that boundary is tracked in `docs/STATE.md`.
+It also does not define the future OSS-default self-hosted team backend.
 
 ## Runtime path
 

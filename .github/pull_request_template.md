@@ -6,9 +6,8 @@
 ## Context/Docs Impact
 
 - [ ] I updated documentation for behavioral or architectural changes.
-- [ ] I updated `docs/STATE.md` if runtime behavior/contracts changed.
-- [ ] I updated `docs/CHANGELOG.md` for user-visible changes.
-- [ ] I added/updated an ADR if this includes a non-trivial architecture decision.
+- [ ] I updated `CHANGELOG.md` for user-visible changes.
+- [ ] I updated `README.md` and/or `TEAM_LIBRARY_PROTOCOL.md` if runtime behavior/contracts changed.
 - [ ] No doc changes were needed, and I explain why:
 
 ## Validation

@@ -1,17 +1,15 @@
 #!/usr/bin/env node
 
-import { mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = process.cwd();
-const OUT_PATH = join(ROOT, "docs", "context-bundle.md");
+const OUT_PATH = join(ROOT, "CONTEXT_BUNDLE.md");
 
 const fixedFiles = [
   "README.md",
-  "docs/README.md",
-  "docs/STATE.md",
-  "docs/CHANGELOG.md",
-  "docs/team-library-protocol.md"
+  "CHANGELOG.md",
+  "TEAM_LIBRARY_PROTOCOL.md"
 ];
 
 function readSafe(path) {
@@ -19,17 +17,6 @@ function readSafe(path) {
     return null;
   }
   return readFileSync(path, "utf8");
-}
-
-function listAdrFiles() {
-  const dir = join(ROOT, "docs", "adr");
-  if (!existsSync(dir)) {
-    return [];
-  }
-  return readdirSync(dir)
-    .filter((name) => name.endsWith(".md") && name !== "README.md" && name !== "0000-template.md")
-    .sort()
-    .map((name) => `docs/adr/${name}`);
 }
 
 function sectionForFile(relPath) {
@@ -42,7 +29,7 @@ function sectionForFile(relPath) {
 }
 
 function main() {
-  const files = [...fixedFiles, ...listAdrFiles()];
+  const files = [...fixedFiles];
   const generatedAt = new Date().toISOString();
 
   const header = [
@@ -58,7 +45,6 @@ function main() {
   const body = files.map(sectionForFile).join("\n");
   const next = `${header}\n${body}`;
 
-  mkdirSync(join(ROOT, "docs"), { recursive: true });
   writeFileSync(OUT_PATH, next, "utf8");
   console.log(`Wrote ${OUT_PATH}`);
 }

@@ -73,21 +73,19 @@ No `.env` variables are required for the basic local-first flow.
 
 ### Extension popup
 
-![Cap Me Action popup capture](docs/media/popup-capture.png)
+![Cap Me Action popup capture](media/popup-capture.png)
 
 ### Editor import surface
 
-![Cap Me Action editor import screen](docs/media/editor-import.png)
+![Cap Me Action editor import screen](media/editor-import.png)
 
 ### Step editing workspace
 
-![Cap Me Action editor step editing workspace](docs/media/editor-step-edit.png)
+![Cap Me Action editor step editing workspace](media/editor-step-edit.png)
 
 ### Export controls
 
-![Cap Me Action editor export controls](docs/media/editor-export.png)
-
-See [`docs/media/README.md`](docs/media/README.md) for media conventions.
+![Cap Me Action editor export controls](media/editor-export.png)
 
 ## Current maturity and limits
 
@@ -95,7 +93,10 @@ See [`docs/media/README.md`](docs/media/README.md) for media conventions.
 - Team mode currently depends on a legacy Google Apps Script adapter and manual external setup.
 - Browser-agnostic self-hosted team mode is planned but not implemented.
 
-See [docs/STATE.md](docs/STATE.md) for the latest status snapshot and [docs/README.md](docs/README.md) for documentation map.
+## Technical references
+
+- [Team Library protocol](TEAM_LIBRARY_PROTOCOL.md)
+- [Session export schema](docs/export-schema.json)
 
 ## License
 

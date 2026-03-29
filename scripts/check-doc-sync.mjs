@@ -71,8 +71,10 @@ function main() {
     "pnpm-lock.yaml"
   ];
   const docsPrefixes = [
-    "docs/",
     "README.md",
+    "CHANGELOG.md",
+    "TEAM_LIBRARY_PROTOCOL.md",
+    "docs/export-schema.json",
     ".github/pull_request_template.md"
   ];
 
@@ -97,9 +99,9 @@ function main() {
 
   console.error("docs-sync: failed. Critical code changes detected without doc updates.");
   console.error("Update at least one of:");
-  console.error("- docs/STATE.md");
-  console.error("- docs/CHANGELOG.md");
-  console.error("- docs/adr/*.md");
+  console.error("- README.md");
+  console.error("- CHANGELOG.md");
+  console.error("- TEAM_LIBRARY_PROTOCOL.md");
   console.error("");
   console.error("Critical changed files:");
   for (const file of criticalChanges) {

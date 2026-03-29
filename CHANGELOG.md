@@ -15,7 +15,7 @@ Historical entries may mention paths that were intentionally removed from the pu
 
 - Public release polish pass:
   - Strengthened README framing for portfolio/recruiter clarity.
-  - Added media placeholder guide at `docs/media/README.md`.
+  - Added release media guidance and standardized screenshot naming.
   - Added minimal `.env.example` clarifying local-first flow does not require env vars.
 
 ## 2026-03-27
@@ -31,7 +31,7 @@ Historical entries may mention paths that were intentionally removed from the pu
 - Hardening stage: remote team-library flow is now frozen into repo-backed artifacts.
   - Added canonical Apps Script backend source at `backend/google-apps-script/team-library/Code.gs`.
   - Added backend manifest/scopes at `backend/google-apps-script/team-library/appsscript.json`.
-  - Added canonical protocol doc at `docs/team-library-protocol.md`.
+  - Added canonical protocol doc at `TEAM_LIBRARY_PROTOCOL.md`.
   - Added first-run setup verification checklist.
   - Added `TEAM_SYNC_PROTOCOL_VERSION = 1.0.0` to team-library bridge requests/responses and backend request paths.
   - Added backend `health` / `version` responses for reproducible setup validation.
