@@ -31,3 +31,8 @@ CONTEXT_BUNDLE.md
 # Generated internal artifacts
 artifacts/
 .codex/
+
+# Local-only workflow artifacts
+AGENTS.md
+ARCHITECT_NOTES.md
+_executor_prompt.txt
