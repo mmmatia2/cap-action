@@ -418,8 +418,8 @@ let floatingDockFrame = null;
 let dockUi = { left: null, bottom: 18, minimized: false };
 let dockUiLoaded = false;
 
-const DOCK_EXPANDED = { width: 324, height: 54 };
-const DOCK_MINIMIZED = { width: 124, height: 48 };
+const DOCK_EXPANDED = { width: 324, height: 42 };
+const DOCK_MINIMIZED = { width: 124, height: 42 };
 let dockHiddenForScreenshot = false;
 let dockRestoreSafetyTimer = null;
 
@@ -475,7 +475,7 @@ function applyDockFrameStyle() {
   floatingDockFrame.style.borderRadius = dockUi.minimized ? "14px" : "24px";
   floatingDockFrame.style.zIndex = "2147483647";
   floatingDockFrame.style.background = "transparent";
-  floatingDockFrame.style.boxShadow = "0 12px 35px rgba(0,0,0,0.35)";
+  floatingDockFrame.style.boxShadow = "none";
 }
 
 function setDockScreenshotVisibility(hidden) {

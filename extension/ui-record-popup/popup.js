@@ -23,14 +23,9 @@ const DEFAULT_SYNC_CONFIG = {
   maskInputValues: true,
   accountEmail: null
 };
-let autoSyncDefaultsAnnounced = false;
 
 function getStorage(keys) {
   return new Promise((resolve) => chrome.storage.local.get(keys, resolve));
-}
-
-function setStorage(value) {
-  return new Promise((resolve) => chrome.storage.local.set(value, resolve));
 }
 
 function sendRuntimeMessage(message) {
@@ -74,45 +69,29 @@ function getSyncStateText(syncConfig, latestSession, syncState, authReady) {
     return "Sync: endpoint missing. Configure once in Diagnostics & Advanced Settings.";
   }
   if (!syncConfig.enabled) {
-    return "Sync: disabled in advanced settings.";
+    return "Sync: off by default. Use advanced settings only if you need legacy team sync.";
   }
   if (!syncConfig.autoUploadOnStop) {
-    return "Sync: enabled, but auto-sync on stop is disabled.";
+    return "Sync: ready in advanced mode. Auto-upload on stop is off.";
   }
   if (authReady?.status !== "token_available") {
-    return "Sync: ready after sign-in. Auto-sync will run on capture stop.";
+    return "Sync: advanced auto-upload is configured, but sign-in is still required.";
   }
   if (!latestSession) {
-    return "Sync: ready. Capture a session; it will auto-sync on stop.";
+    return "Sync: advanced auto-upload on stop is enabled.";
   }
   const status = latestSession.sync?.status ?? "local";
   const code = latestSession.sync?.errorCode ?? syncState?.lastErrorCode ?? null;
   if (status === "synced") {
-    return "Sync: latest session synced.";
+    return "Sync: latest raw capture uploaded via advanced sync.";
   }
   if (status === "pending") {
-    return "Sync: latest session pending upload/retry.";
+    return "Sync: latest raw capture pending advanced upload/retry.";
   }
   if (status === "failed" || status === "blocked") {
-    return `Sync: latest session ${status}${code ? ` (${code})` : ""}.`;
+    return `Sync: latest raw capture ${status} in advanced mode${code ? ` (${code})` : ""}.`;
   }
-  return "Sync: ready. Latest session is local/not uploaded yet.";
-}
-
-async function maybeApplyOperatorSyncDefaults(syncConfig, authReady) {
-  if (!syncConfig.endpointUrl || authReady?.status !== "token_available") {
-    return { changed: false, syncConfig };
-  }
-  if (syncConfig.enabled && syncConfig.autoUploadOnStop) {
-    return { changed: false, syncConfig };
-  }
-  const next = {
-    ...syncConfig,
-    enabled: true,
-    autoUploadOnStop: true
-  };
-  await setStorage({ syncConfig: next });
-  return { changed: true, syncConfig: next };
+  return "Sync: latest raw capture is still local.";
 }
 
 async function checkLocalEditorReady() {
@@ -208,7 +187,7 @@ function renderRecentSessions(sessions, latestStepBySession) {
       const syncState = session.sync?.status ? ` | sync: ${escapeHtml(session.sync.status)}` : "";
       return `<article class="recent-item" data-session-id="${escapeHtml(session.id)}" role="button" tabindex="0">
         <div class="recent-thumb"${thumbStyle}></div>
-        <div>
+        <div class="recent-details">
           <p class="recent-title">${title}</p>
           <p class="recent-meta">${session.stepsCount || 0} steps - ${escapeHtml(when)}${syncState}</p>
         </div>
@@ -222,18 +201,10 @@ async function refreshState() {
   const captureState = store.captureState ?? { isCapturing: false };
   const sessions = store.sessions ?? [];
   const latestStepBySession = getLatestStepBySession(store.steps ?? []);
-  let syncConfig = normalizeSyncConfig(store.syncConfig);
+  const syncConfig = normalizeSyncConfig(store.syncConfig);
   const syncState = store.syncState ?? null;
   const latestSession = getLatestSession(sessions);
   const authReady = await sendRuntimeMessage({ type: "CHECK_SYNC_AUTH_READY" });
-  const defaultsResult = await maybeApplyOperatorSyncDefaults(syncConfig, authReady);
-  if (defaultsResult.changed) {
-    syncConfig = defaultsResult.syncConfig;
-    if (!autoSyncDefaultsAnnounced) {
-      captureStatus.textContent = "Team sync auto-sync enabled for this signed-in operator.";
-      autoSyncDefaultsAnnounced = true;
-    }
-  }
   const isCapturing = Boolean(captureState.isCapturing);
 
   captureToggleLabel.textContent = isCapturing ? "Stop Recording" : "Start Recording";
@@ -251,18 +222,26 @@ async function refreshState() {
   }
 
   renderRecentSessions(sessions, latestStepBySession);
-  authStateText.textContent = getAuthStateText(authReady, syncConfig);
-  syncStateText.textContent = getSyncStateText(syncConfig, latestSession, syncState, authReady);
+  if (authStateText) {
+    authStateText.textContent = getAuthStateText(authReady, syncConfig);
+  }
+  if (syncStateText) {
+    syncStateText.textContent = getSyncStateText(syncConfig, latestSession, syncState, authReady);
+  }
 }
 
 async function toggleCapture() {
-  const store = await getStorage(["captureState"]);
+  const store = await getStorage(["captureState", "syncConfig"]);
   const isCapturing = Boolean(store.captureState?.isCapturing);
+  const syncConfig = normalizeSyncConfig(store.syncConfig);
   const type = isCapturing ? "STOP_CAPTURE" : "START_CAPTURE";
   const response = await sendRuntimeMessage({ type });
   if (type === "STOP_CAPTURE") {
     if (response?.queuedSessionId) {
-      captureStatus.textContent = "Capture stopped. Team sync queued automatically.";
+      captureStatus.textContent =
+        syncConfig.enabled && syncConfig.autoUploadOnStop
+          ? "Capture stopped. Saved locally; advanced sync is also enabled in settings."
+          : "Capture stopped.";
     } else {
       captureStatus.textContent = "Capture stopped.";
     }
@@ -339,21 +318,27 @@ openEditor.addEventListener("click", () => {
     captureStatus.textContent = "Unable to open editor. Start the app with pnpm dev:app and try again.";
   });
 });
-checkLocalEditor.addEventListener("click", () => {
-  handleCheckLocalEditor().catch(() => {
-    captureStatus.textContent = "Local editor check failed. Start the app with pnpm dev:app and try again.";
+if (checkLocalEditor) {
+  checkLocalEditor.addEventListener("click", () => {
+    handleCheckLocalEditor().catch(() => {
+      captureStatus.textContent = "Local editor check failed. Start the app with pnpm dev:app and try again.";
+    });
   });
-});
-syncSignIn.addEventListener("click", () => {
-  handleSyncSignIn().catch(() => {
-    captureStatus.textContent = "Unable to sign in for team sync.";
+}
+if (syncSignIn) {
+  syncSignIn.addEventListener("click", () => {
+    handleSyncSignIn().catch(() => {
+      captureStatus.textContent = "Unable to sign in for team sync.";
+    });
   });
-});
-syncSignOut.addEventListener("click", () => {
-  handleSyncSignOut().catch(() => {
-    captureStatus.textContent = "Unable to sign out for team sync.";
+}
+if (syncSignOut) {
+  syncSignOut.addEventListener("click", () => {
+    handleSyncSignOut().catch(() => {
+      captureStatus.textContent = "Unable to sign out for team sync.";
+    });
   });
-});
+}
 recentCaptureList.addEventListener("click", (event) => {
   const card = event.target.closest("[data-session-id]");
   if (!card) {
