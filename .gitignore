@@ -35,4 +35,5 @@ artifacts/
 # Local-only workflow artifacts
 AGENTS.md
 ARCHITECT_NOTES.md
+.github/PULL_REQUEST_TEMPLATE.md
 _executor_prompt.txt
