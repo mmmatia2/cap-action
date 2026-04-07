@@ -11,6 +11,21 @@ const MAX_STEPS = 500;
 const MAX_EVENT_LOG = 200;
 
 const lastThumbnailCaptureByTab = {};
+const pendingTextEntryBySessionId = new Map();
+const TEXT_ENTRY_FLUSH_DELAY_MS = 500;
+const TEXT_ENTRY_BOUNDARY_KEYS = new Set(["Enter", "Tab", "Escape"]);
+const NON_TEXT_INPUT_TYPES = new Set([
+  "button",
+  "checkbox",
+  "color",
+  "file",
+  "hidden",
+  "image",
+  "radio",
+  "range",
+  "reset",
+  "submit"
+]);
 
 const DEFAULT_CAPTURE_STATE = { isCapturing: false, startedAt: null };
 const DEFAULT_SYNC_CONFIG = {
@@ -167,6 +182,54 @@ function buildStepSignature(step) {
     m.alt ? "1" : "0",
     m.shift ? "1" : "0"
   ].join("|");
+}
+
+function isStandardTextEntryTarget(step) {
+  const target = step?.target ?? {};
+  const tag = String(target.tag ?? "").toLowerCase();
+  if (tag === "textarea") {
+    return true;
+  }
+  if (tag !== "input") {
+    return false;
+  }
+  const type = String(target.type ?? "").toLowerCase();
+  return !NON_TEXT_INPUT_TYPES.has(type);
+}
+
+function buildTextEntryFieldKey(step) {
+  const target = step?.target ?? {};
+  const selectors = step?.selectors ?? {};
+  return [
+    step?.url ?? "",
+    target.tag ?? "",
+    target.id ?? "",
+    target.name ?? "",
+    target.type ?? "",
+    target.role ?? "",
+    target.placeholder ?? "",
+    target.label ?? "",
+    selectors.css ?? "",
+    selectors.xpath ?? ""
+  ].join("|");
+}
+
+function shouldSuppressTextEntryKeyStep(step) {
+  if (step?.type !== "key" || !isStandardTextEntryTarget(step)) {
+    return false;
+  }
+
+  const modifiers = step?.modifiers ?? {};
+  if (modifiers.ctrl || modifiers.meta || modifiers.alt) {
+    return false;
+  }
+
+  const key = String(step?.key ?? "");
+  return !TEXT_ENTRY_BOUNDARY_KEYS.has(key);
+}
+
+function shouldBufferTextInputStep(step) {
+  return step?.type === "input" && isStandardTextEntryTarget(step);
 }
 
 function findLatestSessionStep(steps, sessionId) {
@@ -474,6 +537,99 @@ function appendEventLog(store, event) {
   }
 }
 
+function clearPendingTextEntryTimer(pending) {
+  if (pending?.timerId) {
+    clearTimeout(pending.timerId);
+  }
+}
+
+async function persistTextEntryStep(store, sessionId, pending, reason = "idle") {
+  const session = sessionById(store.sessions, sessionId);
+  if (!session || !pending?.step) {
+    return { ok: false, errorCode: "SESSION_NOT_FOUND" };
+  }
+
+  const step = {
+    ...pending.step,
+    id: makeId("step"),
+    sessionId,
+    stepIndex: (session?.stepsCount ?? 0) + 1,
+    thumbnailDataUrl: null,
+    annotations: []
+  };
+
+  const latestSessionStep = findLatestSessionStep(store.steps, sessionId);
+  const isDuplicate =
+    latestSessionStep &&
+    buildStepSignature(latestSessionStep) === buildStepSignature(step) &&
+    step.at - (latestSessionStep.at ?? 0) <= 800;
+
+  if (isDuplicate) {
+    return { ok: true, ignored: true };
+  }
+
+  try {
+    const tab = await getTabById(session.tabId);
+    const thumbnail = await Promise.race([
+      captureThumbnailForTab(tab, step),
+      new Promise((resolve) => setTimeout(() => resolve(null), 900))
+    ]);
+    step.thumbnailDataUrl = typeof thumbnail === "string" ? thumbnail : null;
+  } catch {
+    step.thumbnailDataUrl = null;
+  }
+
+  store.steps.push(step);
+  session.stepsCount += 1;
+  session.updatedAt = step.at;
+  session.lastUrl = step.url || session.lastUrl;
+  session.lastTitle = step.pageTitle || session.lastTitle;
+  markSessionSyncStatus(session, {
+    status: store.syncConfig.enabled ? "pending" : "local",
+    errorCode: null
+  });
+  appendEventLog(store, {
+    type: "TEXT_ENTRY_FLUSHED",
+    reason,
+    sessionId,
+    tabId: session.tabId ?? null,
+    ts: nowTs()
+  });
+  await saveStore(store);
+  return { ok: true, step };
+}
+
+async function flushPendingTextEntryForSession(store, sessionId, reason = "boundary") {
+  const pending = pendingTextEntryBySessionId.get(sessionId);
+  if (!pending) {
+    return { ok: false, ignored: true };
+  }
+
+  clearPendingTextEntryTimer(pending);
+  pendingTextEntryBySessionId.delete(sessionId);
+
+  if (!store.captureState.isCapturing) {
+    return { ok: false, ignored: true };
+  }
+
+  return persistTextEntryStep(store, sessionId, pending, reason);
+}
+
+function schedulePendingTextEntryFlush(sessionId) {
+  const pending = pendingTextEntryBySessionId.get(sessionId);
+  if (!pending) {
+    return;
+  }
+
+  clearPendingTextEntryTimer(pending);
+  pending.timerId = setTimeout(() => {
+    void (async () => {
+      const store = await loadStore();
+      await flushPendingTextEntryForSession(store, sessionId, "idle");
+    })();
+  }, TEXT_ENTRY_FLUSH_DELAY_MS);
+}
+
 function markSessionSyncStatus(session, patch) {
   session.sync = {
     ...defaultSessionSync(),
@@ -685,6 +841,23 @@ async function processSyncQueue(trigger = "manual") {
   await scheduleSyncAlarm(store.syncQueue);
 }
 
+function getTabById(tabId) {
+  return new Promise((resolve) => {
+    if (!Number.isFinite(tabId)) {
+      resolve(null);
+      return;
+    }
+
+    chrome.tabs.get(tabId, (tab) => {
+      if (chrome.runtime.lastError || !tab) {
+        resolve(null);
+        return;
+      }
+      resolve(tab);
+    });
+  });
+}
+
 function captureVisibleTab(windowId) {
   return new Promise((resolve) => {
     chrome.tabs.captureVisibleTab(windowId, { format: "png" }, (dataUrl) => {
@@ -798,13 +971,12 @@ async function compressThumbnail(dataUrl, options = THUMBNAIL_CAPTURE_CONFIG) {
   }
 }
 
-async function maybeCaptureThumbnail(sender, step) {
+async function captureThumbnailForTab(tab, step) {
   const stepType = step?.type ?? "";
   if (!shouldCaptureThumbnail(step)) {
     return null;
   }
 
-  const tab = sender.tab;
   if (!tab || typeof tab.id !== "number" || typeof tab.windowId !== "number") {
     return null;
   }
@@ -866,6 +1038,10 @@ async function maybeCaptureThumbnail(sender, step) {
       );
     }
   }
+}
+
+async function maybeCaptureThumbnail(sender, step) {
+  return captureThumbnailForTab(sender.tab, step);
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -1055,6 +1231,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.type === "STOP_CAPTURE") {
+      for (const sessionId of Array.from(pendingTextEntryBySessionId.keys())) {
+        await flushPendingTextEntryForSession(store, sessionId, "stop");
+      }
+
       store.captureState = {
         isCapturing: false,
         startedAt: store.captureState.startedAt ?? nowTs()
@@ -1263,6 +1443,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         thumbnailDataUrl: null,
         annotations: []
       };
+
+      if (shouldSuppressTextEntryKeyStep(step)) {
+        sendResponse({ ok: true, sessionId: sessionId ?? null, schemaVersion: APP_SCHEMA_VERSION, suppressed: true });
+        return;
+      }
+
+      if (shouldBufferTextInputStep(step)) {
+        const fieldKey = buildTextEntryFieldKey(step);
+        const pending = pendingTextEntryBySessionId.get(sessionId);
+
+        if (pending && pending.fieldKey !== fieldKey) {
+          await flushPendingTextEntryForSession(store, sessionId, "field-switch");
+        }
+
+        const refreshedPending = pendingTextEntryBySessionId.get(sessionId);
+        if (refreshedPending) {
+          clearPendingTextEntryTimer(refreshedPending);
+          refreshedPending.step = step;
+          refreshedPending.fieldKey = fieldKey;
+        } else {
+          pendingTextEntryBySessionId.set(sessionId, {
+            step,
+            fieldKey,
+            timerId: null
+          });
+        }
+
+        schedulePendingTextEntryFlush(sessionId);
+        sendResponse({
+          ok: true,
+          sessionId: sessionId ?? null,
+          schemaVersion: APP_SCHEMA_VERSION,
+          buffered: true
+        });
+        return;
+      }
+
+      await flushPendingTextEntryForSession(store, sessionId, "boundary");
 
       const latestSessionStep = findLatestSessionStep(store.steps, sessionId);
       const isDuplicate =
