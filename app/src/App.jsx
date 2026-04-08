@@ -4,9 +4,6 @@ import {
   APP_BRIDGE_CHANNEL,
   APP_BRIDGE_REQUEST_TYPES,
   APP_BRIDGE_RESPONSE_TYPES,
-  TEAM_SYNC_AUTH_OWNERS,
-  TEAM_SYNC_BACKEND_ACTIONS,
-  TEAM_SYNC_AUTH_ERROR_CODES,
   TEAM_SYNC_PROTOCOL_VERSION
 } from "./lib/protocol";
 import { deleteStepById, moveStepInList, patchStepById, resequenceSteps } from "./editor/state/sessionReducer";
@@ -14,13 +11,13 @@ import { StepList } from "./editor/components/StepList";
 import { StepDetails } from "./editor/components/StepDetails";
 import { AnnotationCanvas } from "./editor/components/AnnotationCanvas";
 import { ExportPanel } from "./editor/components/ExportPanel";
-import { Download, UploadCloud, Cloud, Moon, Sun, MonitorSmartphone, Share2, Trash2, GripVertical, FileCode2, FileText, FileJson } from "lucide-react";
+import { Download, UploadCloud, Moon, Sun, MonitorSmartphone, Share2, Trash2, GripVertical, FileCode2, FileText, FileJson } from "lucide-react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
 // Purpose: provide a practical step editor for exported recorder sessions.
 // Inputs: exported session JSON files, extension storage sessions, and in-app edits.
-// Outputs: edited JSON export plus markdown/html procedure exports for team sharing.
+// Outputs: edited JSON export plus markdown/html procedure exports for local storage and n8n distribution.
 function normalizeText(value) {
   return String(value ?? "").replace(/\s+/g, " ").trim();
 }
@@ -532,153 +529,14 @@ function buttonStyle(palette, disabled = false) {
   };
 }
 
-function normalizeTeamAuthOwner(value) {
-  return value === TEAM_SYNC_AUTH_OWNERS.editor
-    ? TEAM_SYNC_AUTH_OWNERS.editor
-    : TEAM_SYNC_AUTH_OWNERS.extensionLegacy;
-}
-
-function loadTeamAuthViaPageBridge(timeoutMs = 1500) {
-  return new Promise((resolve) => {
-    const requestId = `cap_me_team_auth_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    let settled = false;
-
-    const cleanup = () => {
-      window.removeEventListener("message", onMessage);
-      clearTimeout(timer);
-    };
-
-    const finish = (value) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      cleanup();
-      resolve(value);
-    };
-
-    const onMessage = (event) => {
-      if (event.source !== window) {
-        return;
-      }
-      const data = event.data;
-      if (!data || data.channel !== APP_BRIDGE_CHANNEL || data.type !== APP_BRIDGE_RESPONSE_TYPES.teamAuth) {
-        return;
-      }
-      if (data.requestId !== requestId) {
-        return;
-      }
-      finish({
-        ok: Boolean(data.ok),
-        token: data.token ? String(data.token) : "",
-        error: data.error ? String(data.error) : null
-      });
-    };
-
-    const timer = setTimeout(() => {
-      finish({ ok: false, token: "", error: TEAM_SYNC_AUTH_ERROR_CODES.extensionUnavailable });
-    }, timeoutMs);
-
-    window.addEventListener("message", onMessage);
-    window.postMessage(
-      {
-        channel: APP_BRIDGE_CHANNEL,
-        type: APP_BRIDGE_REQUEST_TYPES.teamAuth,
-        requestId,
-        protocolVersion: TEAM_SYNC_PROTOCOL_VERSION
-      },
-      "*"
-    );
-  });
-}
-
-function normalizeTeamAuthErrorCode(value) {
-  const text = normalizeText(value).toUpperCase().replace(/[^A-Z0-9]+/g, "_");
-  if (!text || text === "TOKEN_UNAVAILABLE") {
-    return TEAM_SYNC_AUTH_ERROR_CODES.tokenUnavailable;
-  }
-  if (text === TEAM_SYNC_AUTH_ERROR_CODES.editorAuthRequired) {
-    return TEAM_SYNC_AUTH_ERROR_CODES.editorAuthRequired;
-  }
-  if (text === TEAM_SYNC_AUTH_ERROR_CODES.editorAuthInvalid) {
-    return TEAM_SYNC_AUTH_ERROR_CODES.editorAuthInvalid;
-  }
-  if (text === TEAM_SYNC_AUTH_ERROR_CODES.extensionAuthDeprecated) {
-    return TEAM_SYNC_AUTH_ERROR_CODES.extensionAuthDeprecated;
-  }
-  if (text === "BRIDGE_TIMEOUT") {
-    return TEAM_SYNC_AUTH_ERROR_CODES.extensionUnavailable;
-  }
-  return text;
-}
-
-function explainTeamFailure(errorCode) {
-  const code = normalizeTeamAuthErrorCode(errorCode);
-  switch (code) {
-    case TEAM_SYNC_AUTH_ERROR_CODES.editorAuthRequired:
-      return {
-        type: "editor_auth_required",
-        message:
-          "Legacy team adapter (Editor Auth Transitional) needs a temporary token in this tab. Use Extension Auth (Legacy Adapter Default) if unavailable."
-      };
-    case TEAM_SYNC_AUTH_ERROR_CODES.editorAuthInvalid:
-      return {
-        type: "editor_auth_invalid",
-        message: "Legacy team adapter editor token appears invalid. Re-authenticate and paste a fresh token, or use Extension Auth."
-      };
-    case TEAM_SYNC_AUTH_ERROR_CODES.extensionAuthDeprecated:
-      return {
-        type: "extension_auth_deprecated",
-        message: "Legacy team adapter editor-auth mode is not the default. Use Extension Auth (Legacy Adapter Default)."
-      };
-    case TEAM_SYNC_AUTH_ERROR_CODES.extensionUnavailable:
-      return {
-        type: "bridge_unavailable",
-        message: "Legacy extension-auth bridge unavailable. Reload extension and retry, or use Editor Auth (Legacy Transitional) with a temporary token."
-      };
-    case TEAM_SYNC_AUTH_ERROR_CODES.authUnavailable:
-      return {
-        type: "auth_unavailable",
-        message: "Legacy extension auth is unavailable. Confirm the extension is loaded with identity permissions."
-      };
-    case TEAM_SYNC_AUTH_ERROR_CODES.authRequired:
-      return {
-        type: "auth_required",
-        message: "Legacy extension auth is not signed in. Use popup Sign In, or use Editor Auth (Legacy Transitional)."
-      };
-    case TEAM_SYNC_AUTH_ERROR_CODES.authDenied:
-      return {
-        type: "auth_denied",
-        message: "Legacy extension auth was denied. Re-run popup Sign In or use Editor Auth (Legacy Transitional)."
-      };
-    case TEAM_SYNC_AUTH_ERROR_CODES.tokenExpired:
-      return {
-        type: "token_expired",
-        message: "Legacy extension token expired. Sign out/sign in from popup, or use Editor Auth (Legacy Transitional)."
-      };
-    case TEAM_SYNC_AUTH_ERROR_CODES.tokenUnavailable:
-      return {
-        type: "token_unavailable",
-        message: "No sync access token is available from the extension background."
-      };
-    default:
-      return {
-        type: "backend_library_failure",
-        message: `Team library/backend request failed (${code || "UNKNOWN_ERROR"}). Verify endpoint/deployment and retry.`
-      };
-  }
-}
-
 function parseEditorHandoffFromUrl() {
   if (typeof window === "undefined") {
-    return { source: "local", sessionId: "" };
+    return { sessionId: "" };
   }
 
   const params = new URLSearchParams(window.location.search || "");
-  const sourceRaw = normalizeText(params.get("source")).toLowerCase();
-  const source = sourceRaw === "team" ? "team" : "local";
   const sessionId = normalizeText(params.get("sessionId"));
-  return { source, sessionId };
+  return { sessionId };
 }
 
 export default function App() {
@@ -690,13 +548,6 @@ export default function App() {
   const [extensionSteps, setExtensionSteps] = useState([]);
   const [selectedExtensionSessionId, setSelectedExtensionSessionId] = useState("");
   const [extensionStatus, setExtensionStatus] = useState("");
-  const [dataSource, setDataSource] = useState("local");
-  const [teamApiBase, setTeamApiBase] = useState("");
-  const [teamAuthOwner, setTeamAuthOwner] = useState(TEAM_SYNC_AUTH_OWNERS.extensionLegacy);
-  const [teamAccessToken, setTeamAccessToken] = useState("");
-  const [teamSessions, setTeamSessions] = useState([]);
-  const [selectedTeamSessionId, setSelectedTeamSessionId] = useState("");
-  const [teamStatus, setTeamStatus] = useState("");
   const [n8nWebhookUrl, setN8nWebhookUrl] = useState(() => window.localStorage.getItem("cap_me_n8n_webhook_url") || "");
   const [n8nStatus, setN8nStatus] = useState(null);
   const [n8nBusy, setN8nBusy] = useState(false);
@@ -708,7 +559,6 @@ export default function App() {
   const screenshotRef = useRef(null);
   const handoffAttemptedRef = useRef(false);
   const palette = getPalette(theme);
-  const activeModeStatus = dataSource === "local" ? extensionStatus : teamStatus;
   const hasExtensionStorage =
     typeof chrome !== "undefined" && Boolean(chrome.storage?.local) && Boolean(chrome.runtime?.id);
 
@@ -738,52 +588,8 @@ export default function App() {
   }, [selectedId]);
 
   useEffect(() => {
-    const storedBase = window.localStorage.getItem("cap_me_team_api_base");
-    const storedAuthOwner = normalizeTeamAuthOwner(window.localStorage.getItem("cap_me_team_auth_owner"));
-    if (storedBase) {
-      setTeamApiBase(storedBase);
-    }
-    // Keep working users on extension-auth default until editor token acquisition exists in-repo.
-    setTeamAuthOwner(
-      storedAuthOwner === TEAM_SYNC_AUTH_OWNERS.editor
-        ? TEAM_SYNC_AUTH_OWNERS.extensionLegacy
-        : storedAuthOwner
-    );
-    // Purge prior persisted editor token from earlier transition attempts.
-    window.localStorage.removeItem("cap_me_team_access_token");
-  }, []);
-
-  useEffect(() => {
-    if (teamApiBase) {
-      window.localStorage.setItem("cap_me_team_api_base", teamApiBase);
-    }
-  }, [teamApiBase]);
-
-  useEffect(() => {
     window.localStorage.setItem("cap_me_n8n_webhook_url", n8nWebhookUrl);
   }, [n8nWebhookUrl]);
-
-  useEffect(() => {
-    window.localStorage.setItem("cap_me_team_auth_owner", normalizeTeamAuthOwner(teamAuthOwner));
-  }, [teamAuthOwner]);
-
-  useEffect(() => {
-    if (teamAuthOwner !== TEAM_SYNC_AUTH_OWNERS.editor && teamAccessToken) {
-      setTeamAccessToken("");
-    }
-  }, [teamAccessToken, teamAuthOwner]);
-
-  useEffect(() => {
-    if (!hasExtensionStorage) {
-      return;
-    }
-    chrome.storage.local.get(["syncConfig"], (result) => {
-      const endpoint = result.syncConfig?.endpointUrl ?? "";
-      if (endpoint && !teamApiBase) {
-        setTeamApiBase(endpoint);
-      }
-    });
-  }, [hasExtensionStorage, teamApiBase]);
 
   useEffect(() => {
     const requestedSessionId = handoff.sessionId;
@@ -791,31 +597,9 @@ export default function App() {
       return;
     }
 
-    if (handoff.source === "team" && !teamApiBase) {
-      setDataSource("team");
-      setTeamStatus(
-        `Deep link detected for team session ${requestedSessionId}. Configure endpoint URL to continue.`
-      );
-      return;
-    }
-
     handoffAttemptedRef.current = true;
 
     const run = async () => {
-      if (handoff.source === "team") {
-        setDataSource("team");
-        setTeamStatus(`Deep link detected. Loading team session ${requestedSessionId}...`);
-        const loaded = await loadFromTeamLibrary(requestedSessionId);
-        if (!loaded.ok) {
-          return;
-        }
-        await importTeamSessionById(requestedSessionId, {
-          notFoundMessage: `Requested team session ${requestedSessionId} was not found in team library.`
-        });
-        return;
-      }
-
-      setDataSource("local");
       setExtensionStatus(`Deep link detected. Loading extension session ${requestedSessionId}...`);
       const loaded = await loadFromExtensionStorage(requestedSessionId);
       if (!loaded.ok) {
@@ -827,7 +611,7 @@ export default function App() {
     };
 
     void run();
-  }, [handoff, teamApiBase]);
+  }, [handoff]);
 
   function applyImportedPayload(parsed) {
     const migrated = migrateSessionPayload(parsed);
@@ -858,16 +642,6 @@ export default function App() {
     reader.readAsText(file);
   }
 
-  function onDataSourceChange(nextSource) {
-    const normalized = nextSource === "team" ? "team" : "local";
-    setDataSource(normalized);
-    if (normalized === "local") {
-      setTeamStatus("");
-      return;
-    }
-    setExtensionStatus("");
-  }
-
   async function loadBundledSample() {
     try {
       const response = await fetch("/samples/local-smoke-session.json", { method: "GET" });
@@ -876,7 +650,6 @@ export default function App() {
       }
       const parsed = await response.json();
       const normalized = applyImportedPayload(parsed);
-      setDataSource("local");
       setExtensionStatus(`Loaded bundled sample ${normalized.session.id}.`);
     } catch (err) {
       setPayload(null);
@@ -1163,9 +936,10 @@ export default function App() {
       setN8nStatus({ tone: "error", message: "No session is loaded to send." });
       return;
     }
+    const htmlArtifact = asHtml(exportPayload);
 
     setN8nBusy(true);
-    setN8nStatus({ tone: "info", message: "Sending the current session to n8n..." });
+    setN8nStatus({ tone: "info", message: "Sending the HTML artifact and session JSON to n8n..." });
 
     try {
       const response = await fetch(webhookUrl, {
@@ -1173,7 +947,10 @@ export default function App() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(exportPayload)
+        body: JSON.stringify({
+          ...exportPayload,
+          html: htmlArtifact
+        })
       });
 
       if (!response.ok) {
@@ -1187,7 +964,7 @@ export default function App() {
 
       setN8nStatus({
         tone: "info",
-        message: `Sent ${exportPayload.steps.length} step(s) to n8n webhook ${webhookUrl}.`
+        message: `Sent HTML + JSON for ${exportPayload.steps.length} step(s) to n8n webhook ${webhookUrl}.`
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "unknown error";
@@ -1390,164 +1167,6 @@ export default function App() {
     importExtensionSessionById(selectedExtensionSessionId);
   }
 
-  function buildTeamEndpoint(action, query = {}) {
-    const base = String(teamApiBase || "").trim();
-    if (!base) {
-      throw new Error("Team API endpoint is required.");
-    }
-    const url = new URL(base);
-    url.searchParams.set("action", action);
-    url.searchParams.set("protocolVersion", TEAM_SYNC_PROTOCOL_VERSION);
-    Object.entries(query).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && String(value) !== "") {
-        url.searchParams.set(key, String(value));
-      }
-    });
-    return url.toString();
-  }
-
-  async function ensureTeamAccessToken() {
-    if (teamAuthOwner === TEAM_SYNC_AUTH_OWNERS.editor) {
-      const editorToken = normalizeText(teamAccessToken);
-      if (!editorToken) {
-        return {
-          ok: false,
-          token: "",
-          owner: TEAM_SYNC_AUTH_OWNERS.editor,
-          errorCode: TEAM_SYNC_AUTH_ERROR_CODES.editorAuthRequired
-        };
-      }
-      return {
-        ok: true,
-        token: editorToken,
-        owner: TEAM_SYNC_AUTH_OWNERS.editor,
-        errorCode: null
-      };
-    }
-
-    const bridged = await loadTeamAuthViaPageBridge(1600);
-    const token = normalizeText(bridged?.token || "");
-    if (bridged?.ok && token) {
-      return {
-        ok: true,
-        token,
-        owner: TEAM_SYNC_AUTH_OWNERS.extensionLegacy,
-        errorCode: null
-      };
-    }
-    return {
-      ok: false,
-      token: "",
-      owner: TEAM_SYNC_AUTH_OWNERS.extensionLegacy,
-      errorCode: normalizeTeamAuthErrorCode(bridged?.error)
-    };
-  }
-
-  function buildTeamFetchRequest(action, query = {}, auth = null) {
-    const token = normalizeText(auth?.token || "");
-    return {
-      url: buildTeamEndpoint(action),
-      init: {
-        method: "POST",
-        headers: {
-          // Apps Script POST + application/json triggers a failing CORS preflight (OPTIONS 405).
-          // text/plain keeps this as a simple request while still carrying JSON in the body.
-          "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify({
-          accessToken: token,
-          protocolVersion: TEAM_SYNC_PROTOCOL_VERSION,
-          ...query
-        })
-      }
-    };
-  }
-
-  async function loadFromTeamLibrary(preferredSessionId = "") {
-    try {
-      setTeamStatus("Loading team sessions...");
-      const auth = await ensureTeamAccessToken();
-      if (!auth.ok) {
-        throw new Error(auth.errorCode || TEAM_SYNC_AUTH_ERROR_CODES.tokenUnavailable);
-      }
-      const request = buildTeamFetchRequest(TEAM_SYNC_BACKEND_ACTIONS.listSessions, { limit: 50 }, auth);
-      const response = await fetch(request.url, request.init);
-      const body = await response.json();
-      if (!response.ok || body?.ok === false) {
-        throw new Error(body?.errorCode || body?.error || `HTTP_${response.status}`);
-      }
-
-      const items = Array.isArray(body?.items) ? body.items : [];
-      const preferred = String(preferredSessionId || "").trim();
-      const selected =
-        preferred &&
-        items.some((session) => (session.sessionId || session.id) === preferred)
-          ? preferred
-          : items[0]?.sessionId ?? items[0]?.id ?? "";
-      setTeamSessions(items);
-      setSelectedTeamSessionId(selected);
-      setTeamStatus(items.length ? `Loaded ${items.length} team session(s).` : "No team sessions found.");
-      return { ok: true, items, error: null };
-    } catch (err) {
-      const code = normalizeTeamAuthErrorCode(err instanceof Error ? err.message : "unknown_error");
-      const failure = explainTeamFailure(code);
-      setTeamStatus(`Team load failed: ${failure.message}`);
-      return { ok: false, items: [], error: code };
-    }
-  }
-
-  async function importTeamSessionById(sessionId, options = {}) {
-    if (!sessionId) {
-      return false;
-    }
-    try {
-      setTeamStatus("Importing team session...");
-      const auth = await ensureTeamAccessToken();
-      if (!auth.ok) {
-        throw new Error(auth.errorCode || TEAM_SYNC_AUTH_ERROR_CODES.tokenUnavailable);
-      }
-      const request = buildTeamFetchRequest(TEAM_SYNC_BACKEND_ACTIONS.getSession, { sessionId }, auth);
-      const response = await fetch(request.url, request.init);
-      const body = await response.json();
-      if (!response.ok || body?.ok === false) {
-        throw new Error(body?.errorCode || body?.error || `HTTP_${response.status}`);
-      }
-      const rawPayload = body?.payload ?? body;
-      const migrated = migrateSessionPayload(rawPayload);
-      const normalized = normalizePayload(migrated);
-      setPayload(normalized);
-      setSelectedId(normalized.steps[0]?.id || null);
-      setError("");
-      setTeamStatus(`Imported team session ${normalized.session.id}.`);
-      setSelectedTeamSessionId(sessionId);
-      return true;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "unknown error";
-      if (message.toLowerCase().includes("invalid sop payload contract")) {
-        setPayload(null);
-        setSelectedId(null);
-        setError(message);
-        setTeamStatus(`Team import failed: ${message}`);
-        return false;
-      }
-      const code = normalizeTeamAuthErrorCode(err instanceof Error ? err.message : "unknown error");
-      if (code === "SESSION_NOT_FOUND") {
-        setTeamStatus(options.notFoundMessage || `Requested team session ${sessionId} was not found.`);
-      } else {
-        const failure = explainTeamFailure(code);
-        setTeamStatus(`Team import failed: ${failure.message}`);
-      }
-      return false;
-    }
-  }
-
-  async function importSelectedTeamSession() {
-    if (!selectedTeamSessionId) {
-      return;
-    }
-    await importTeamSessionById(selectedTeamSessionId);
-  }
-
   return (
     <main className="app-shell flex flex-col" data-theme={theme}>
       <header className="app-topbar">
@@ -1597,167 +1216,58 @@ export default function App() {
                 <p className="import-shell__eyebrow">Local-First Workflow Editor</p>
                 <h2 className="import-shell__title">Start with local capture artifacts</h2>
                 <p className="import-shell__copy">
-                  Capture locally, refine steps, and export clean SOPs. Team library access is optional and available
-                  through the legacy adapter when needed.
+                  Capture locally, refine steps, and export clean SOPs. n8n now handles storage and distribution
+                  after export.
                 </p>
               </div>
-              <div className="import-shell__badge">
-                {dataSource === "local" ? "Primary: Local-only" : "Optional: Legacy team adapter"}
-              </div>
-            </div>
-            
-            <div className="import-grid">
-              <div className="control-group">
-                <label htmlFor="dataSource" className="field-label">
-                  Mode
-                </label>
-                <select
-                  id="dataSource"
-                  value={dataSource}
-                  onChange={(event) => onDataSourceChange(event.target.value)}
-                  className="app-select min-w-[180px]"
-                >
-                  <option value="local">Local Mode (Recommended)</option>
-                  <option value="team">Team Library (Legacy Google Adapter)</option>
-                  <option value="self_hosted_planned" disabled>
-                    Planned: Self-Hosted Team Mode (Not Implemented)
-                  </option>
-                </select>
-              </div>
-
-              {dataSource === "local" ? (
-                <div className="import-grid import-grid--local w-full">
-                  <button 
-                    type="button" 
-                    onClick={loadFromExtensionStorage} 
-                    className="app-button"
-                  >
-                    <MonitorSmartphone size={16} />
-                    Load From Extension
-                  </button>
-                  <button
-                    type="button"
-                    onClick={loadBundledSample}
-                    className="app-button"
-                  >
-                    <FileJson size={16} />
-                    Load Sample SOP
-                  </button>
-                  <select
-                    value={selectedExtensionSessionId}
-                    onChange={(event) => setSelectedExtensionSessionId(event.target.value)}
-                    className="app-select min-w-[300px]"
-                    disabled={!extensionSessions.length}
-                  >
-                    {!extensionSessions.length ? (
-                      <option value="">No extension sessions loaded</option>
-                    ) : (
-                      extensionSessions.map((session) => (
-                        <option key={session.id} value={session.id}>
-                          {session.id} ({session.stepsCount} steps{session.sync?.status ? ` | ${session.sync.status}` : ""})
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <button 
-                    type="button" 
-                    onClick={importSelectedExtensionSession} 
-                    disabled={!selectedExtensionSessionId}
-                    className="app-button app-button--primary"
-                  >
-                    Import Selected
-                  </button>
-                  <p className="import-note">
-                    You are in local mode. Capture, edit, and export without team auth.
-                  </p>
-                </div>
-              ) : (
-                <div className="team-mode-shell w-full">
-                  <div className="team-mode-grid">
-                    <div className="control-group team-mode-grid__auth">
-                      <label className="field-label">Auth Source</label>
-                      <select
-                        value={teamAuthOwner}
-                        onChange={(event) => setTeamAuthOwner(normalizeTeamAuthOwner(event.target.value))}
-                        className="app-select"
-                      >
-                        <option value={TEAM_SYNC_AUTH_OWNERS.extensionLegacy}>Extension Auth (Legacy Adapter Default)</option>
-                        <option value={TEAM_SYNC_AUTH_OWNERS.editor}>Editor Auth (Legacy Transitional)</option>
-                      </select>
-                    </div>
-                    <div className="control-group team-mode-grid__endpoint">
-                      <label className="field-label">Endpoint URL</label>
-                      <input
-                        type="text"
-                        value={teamApiBase}
-                        placeholder="Apps Script endpoint URL"
-                        onChange={(event) => setTeamApiBase(event.target.value)}
-                        className="app-input"
-                      />
-                    </div>
-                    {teamAuthOwner === TEAM_SYNC_AUTH_OWNERS.editor ? (
-                      <div className="control-group team-mode-grid__token">
-                        <label className="field-label">Editor Access Token (session only)</label>
-                        <input
-                          type="password"
-                          value={teamAccessToken}
-                          placeholder="Paste temporary hosted-editor token (not saved)"
-                          onChange={(event) => setTeamAccessToken(event.target.value)}
-                          className="app-input"
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="team-mode-actions">
-                    <button
-                      type="button"
-                      onClick={loadFromTeamLibrary}
-                      className="app-button"
-                    >
-                      <Cloud size={16} />
-                      Load Library
-                    </button>
-                    <select
-                      value={selectedTeamSessionId}
-                      onChange={(event) => setSelectedTeamSessionId(event.target.value)}
-                      className="app-select"
-                      disabled={!teamSessions.length}
-                    >
-                      {!teamSessions.length ? (
-                        <option value="">No team sessions loaded</option>
-                      ) : (
-                        teamSessions.map((session) => {
-                          const id = session.sessionId || session.id;
-                          const title = session.title || session.lastTitle || session.startTitle || id;
-                          return (
-                            <option key={id} value={id}>
-                              {title}
-                            </option>
-                          );
-                        })
-                      )}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={importSelectedTeamSession}
-                      disabled={!selectedTeamSessionId}
-                      className="app-button app-button--primary"
-                    >
-                      Import Team Session
-                    </button>
-                  </div>
-                </div>
-              )}
+              <div className="import-shell__badge">Primary: Local-only</div>
             </div>
 
-            {dataSource === "team" && (
-              <p className="import-note import-note--team">
-                {teamAuthOwner === TEAM_SYNC_AUTH_OWNERS.editor
-                  ? "Legacy adapter: Editor Auth uses a temporary in-memory token for this tab only."
-                  : "Legacy adapter: Extension Auth uses popup sign-in for Google Apps Script team library reads."}
+            <div className="import-grid import-grid--local w-full">
+              <button
+                type="button"
+                onClick={loadFromExtensionStorage}
+                className="app-button"
+              >
+                <MonitorSmartphone size={16} />
+                Load From Extension
+              </button>
+              <button
+                type="button"
+                onClick={loadBundledSample}
+                className="app-button"
+              >
+                <FileJson size={16} />
+                Load Sample SOP
+              </button>
+              <select
+                value={selectedExtensionSessionId}
+                onChange={(event) => setSelectedExtensionSessionId(event.target.value)}
+                className="app-select min-w-[300px]"
+                disabled={!extensionSessions.length}
+              >
+                {!extensionSessions.length ? (
+                  <option value="">No extension sessions loaded</option>
+                ) : (
+                  extensionSessions.map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {session.id} ({session.stepsCount} steps{session.sync?.status ? ` | ${session.sync.status}` : ""})
+                    </option>
+                  ))
+                )}
+              </select>
+              <button
+                type="button"
+                onClick={importSelectedExtensionSession}
+                disabled={!selectedExtensionSessionId}
+                className="app-button app-button--primary"
+              >
+                Import Selected
+              </button>
+              <p className="import-note">
+                You are in local mode. Capture, edit, and export without team auth.
               </p>
-            )}
+            </div>
 
             <div className="import-footer">
               <span className="import-footer__label">Direct JSON import</span>
@@ -1768,10 +1278,10 @@ export default function App() {
                 className="app-file-input"
               />
             </div>
-            
-            {activeModeStatus && (
+
+            {extensionStatus && (
               <p className="status-banner">
-                {activeModeStatus}
+                {extensionStatus}
               </p>
             )}
           </div>
