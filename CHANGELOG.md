@@ -3,6 +3,14 @@
 All notable user-visible changes should be recorded here.
 Historical entries may mention paths that were intentionally removed from the public repository surface.
 
+## 2026-04-08
+
+- Interview-readiness and n8n distribution pass:
+  - Simplified the editor to a single local-only primary flow.
+  - Added `Send to n8n` so the editor can hand off the polished SOP artifact bundle.
+  - Confirmed the n8n workflow can store matching JSON and HTML artifacts in a shared Drive-backed folder.
+  - Reframed the legacy Team Library adapter as historical reference instead of the primary product path.
+
 ## 2026-03-25
 
 - Repository surface cleanup for public baseline:

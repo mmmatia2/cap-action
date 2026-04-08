@@ -1,11 +1,11 @@
 # Cap Me Action
 
 Cap Me Action is a browser-based SOP capture and guide authoring tool.  
-It records workflow steps from a Chrome extension, then lets you refine and export those steps in a web editor.
+It records workflow steps from a Chrome extension, then lets you refine and export those steps in a web editor. The editor can also hand polished HTML plus matching JSON to n8n for storage and distribution.
 
 ## Project status
 
-Active prototype with working local-first capture/edit/export flow.
+Active prototype with working local-first capture/edit/export flow and an n8n handoff for polished SOP artifacts.
 
 ## Who this is for
 
@@ -17,21 +17,25 @@ Active prototype with working local-first capture/edit/export flow.
 1. Capture actions in the extension.
 2. Open the captured session in the editor.
 3. Refine steps, notes, screenshots, and annotations.
-4. Export SOP artifacts (JSON, Markdown, HTML).
+4. Export SOP artifacts (JSON, Markdown, HTML, PDF).
+5. Send the polished JSON + HTML bundle to n8n for shared storage/distribution when needed.
 
 ## Architecture (current)
 
 - `extension/`: Chrome MV3 capture client, dock, popup, inspector, local storage, editor handoff.
-- `app/`: React/Vite editor for import, editing, and export.
-- `backend/google-apps-script/team-library/`: legacy Team Library adapter backend source.
+- `app/`: React/Vite local-only editor for import, editing, export, and n8n handoff.
+- `backend/google-apps-script/team-library/`: legacy Team Library adapter backend source kept as a historical reference.
 
 Primary product path is local-first.  
-Google Apps Script Team Library support is currently a legacy adapter path, not the long-term default.
+n8n now handles storage/distribution of polished SOP artifacts after export.  
+Google Apps Script Team Library support is a legacy reference path, not the long-term default.
 
 ## What exists today
 
 - MV3 extension capture with popup, inspector, and floating dock.
 - Editor workflow for import, step editing, annotations/redactions, and export.
+- Export controls for JSON, Markdown, HTML, and PDF.
+- Local n8n webhook handoff that sends canonical JSON plus polished HTML.
 - Contract-backed session payload schema and migration boundary.
 - Versioned extension packaging and verification commands.
 
@@ -89,9 +93,10 @@ No `.env` variables are required for the basic local-first flow.
 
 ## Current maturity and limits
 
-- Project is functional for local capture/edit/export but still evolving.
-- Team mode currently depends on a legacy Google Apps Script adapter and manual external setup.
-- Browser-agnostic self-hosted team mode is planned but not implemented.
+- Project is functional for local capture/edit/export and n8n-assisted artifact storage/distribution, but still evolving.
+- The editor is intentionally local-only in the primary UX.
+- Team Library remains in the repo as a legacy Google Apps Script reference path, not the default product route.
+- Browser-agnostic self-hosted team mode is not the current product focus.
 
 ## Technical references
 

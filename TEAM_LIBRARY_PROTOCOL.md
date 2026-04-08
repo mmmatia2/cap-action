@@ -1,7 +1,7 @@
 # Team Library Protocol
 
-Status: current canonical contract for the remote team-library flow.
-OSS boundary note: this contract is currently a legacy Google Apps Script adapter path, not the long-term default team backend/auth model.
+Legacy reference contract for the remote team-library flow.
+OSS boundary note: this document preserves the historical Google Apps Script adapter path. The current product default is the local-only editor flow with n8n handling SOP storage and distribution.
 
 ## Version
 
@@ -26,6 +26,7 @@ This protocol covers:
 2. Extension/web app <-> Google Apps Script backend
 
 It does not redefine local capture/storage contracts.
+It also does not define the current local-only editor workflow or the n8n storage/distribution workflow.
 It also does not define the future OSS-default self-hosted team backend.
 
 ## Runtime path
