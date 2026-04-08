@@ -697,6 +697,9 @@ export default function App() {
   const [teamSessions, setTeamSessions] = useState([]);
   const [selectedTeamSessionId, setSelectedTeamSessionId] = useState("");
   const [teamStatus, setTeamStatus] = useState("");
+  const [n8nWebhookUrl, setN8nWebhookUrl] = useState(() => window.localStorage.getItem("cap_me_n8n_webhook_url") || "");
+  const [n8nStatus, setN8nStatus] = useState(null);
+  const [n8nBusy, setN8nBusy] = useState(false);
   const [dragState, setDragState] = useState({ dragId: "", overId: "", placement: "after" });
   const [annotationMode, setAnnotationMode] = useState(null);
   const [draftAnnotation, setDraftAnnotation] = useState(null);
@@ -755,6 +758,10 @@ export default function App() {
       window.localStorage.setItem("cap_me_team_api_base", teamApiBase);
     }
   }, [teamApiBase]);
+
+  useEffect(() => {
+    window.localStorage.setItem("cap_me_n8n_webhook_url", n8nWebhookUrl);
+  }, [n8nWebhookUrl]);
 
   useEffect(() => {
     window.localStorage.setItem("cap_me_team_auth_owner", normalizeTeamAuthOwner(teamAuthOwner));
@@ -1109,11 +1116,12 @@ export default function App() {
     window.addEventListener("mouseup", onUp);
   }
 
-  function exportJson() {
+  function buildCanonicalExportPayload() {
     if (!payload) {
-      return;
+      return null;
     }
-    const exportPayload = buildSessionExport({
+
+    return buildSessionExport({
       exportedAt: Date.now(),
       session: payload.session,
       steps: payload.steps,
@@ -1123,6 +1131,13 @@ export default function App() {
         syncRevision: payload.meta?.syncRevision ?? payload.session?.sync?.revision ?? 1
       }
     });
+  }
+
+  function exportJson() {
+    const exportPayload = buildCanonicalExportPayload();
+    if (!exportPayload) {
+      return;
+    }
     const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1130,6 +1145,56 @@ export default function App() {
     a.download = `cap-me-edited-${payload.session?.id || "session"}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function sendToN8n() {
+    if (!payload) {
+      return;
+    }
+
+    const webhookUrl = normalizeText(n8nWebhookUrl);
+    if (!webhookUrl) {
+      setN8nStatus({ tone: "error", message: "Add a local n8n webhook URL first." });
+      return;
+    }
+
+    const exportPayload = buildCanonicalExportPayload();
+    if (!exportPayload) {
+      setN8nStatus({ tone: "error", message: "No session is loaded to send." });
+      return;
+    }
+
+    setN8nBusy(true);
+    setN8nStatus({ tone: "info", message: "Sending the current session to n8n..." });
+
+    try {
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(exportPayload)
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text().catch(() => "");
+        throw new Error(
+          responseText
+            ? `${response.status} ${response.statusText}: ${responseText.slice(0, 240)}`
+            : `${response.status} ${response.statusText}`
+        );
+      }
+
+      setN8nStatus({
+        tone: "info",
+        message: `Sent ${exportPayload.steps.length} step(s) to n8n webhook ${webhookUrl}.`
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "unknown error";
+      setN8nStatus({ tone: "error", message: `n8n send failed: ${message}` });
+    } finally {
+      setN8nBusy(false);
+    }
   }
 
   function exportMarkdown() {
@@ -1514,6 +1579,11 @@ export default function App() {
               onMarkdown={exportMarkdown}
               onHtml={exportHtml}
               onPdf={exportPdf}
+              n8nWebhookUrl={n8nWebhookUrl}
+              onN8nWebhookUrlChange={setN8nWebhookUrl}
+              onSendToN8n={sendToN8n}
+              n8nBusy={n8nBusy}
+              n8nStatus={n8nStatus}
             />
           )}
         </div>
