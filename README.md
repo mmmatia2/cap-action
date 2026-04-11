@@ -101,6 +101,7 @@ No `.env` variables are required for the basic local-first flow.
 ## Technical references
 
 - [Team Library protocol](TEAM_LIBRARY_PROTOCOL.md)
+- [SOP package contract](docs/protocols/sop-package-contract.md)
 - [Session export schema](docs/export-schema.json)
 
 ## License
