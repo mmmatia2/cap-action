@@ -30,6 +30,8 @@ CONTEXT_BUNDLE.md
 
 # Generated internal artifacts
 artifacts/
+!docker/n8n/artifacts/
+!docker/n8n/artifacts/.gitignore
 .codex/
 
 # Local-only workflow artifacts

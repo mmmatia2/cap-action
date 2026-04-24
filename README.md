@@ -64,6 +64,9 @@ No `.env` variables are required for the basic local-first flow.
 - `pnpm extension:set-oauth-client-id -- --client-id "YOUR_CLIENT_ID.apps.googleusercontent.com"`
 - `pnpm docs:bundle`
 - `pnpm docs:check`
+- `docker compose -f docker/n8n/compose.yml up -d` for the project-local Docker n8n runtime on port `5679`
+
+For setup details, see [docs/n8n-docker.md](docs/n8n-docker.md).
 
 ## Extension identity and OAuth setup note
 
