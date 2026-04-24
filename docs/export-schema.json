@@ -58,6 +58,37 @@
           "at": { "type": "number" },
           "selectors": { "type": "object", "additionalProperties": true },
           "target": { "type": "object", "additionalProperties": true },
+          "evidence": {
+            "type": ["object", "null"],
+            "description": "Optional Capture Contract v2 source evidence for semantic labeling, element bounds, viewport, visibility, safe value metadata, and confidence signals.",
+            "properties": {
+              "semantic": { "type": "object", "additionalProperties": true },
+              "rect": {
+                "type": ["object", "null"],
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "width": { "type": "number" },
+                  "height": { "type": "number" }
+                },
+                "additionalProperties": true
+              },
+              "viewport": {
+                "type": "object",
+                "properties": {
+                  "width": { "type": "number" },
+                  "height": { "type": "number" },
+                  "scrollX": { "type": "number" },
+                  "scrollY": { "type": "number" }
+                },
+                "additionalProperties": true
+              },
+              "visibility": { "type": ["object", "null"], "additionalProperties": true },
+              "value": { "type": ["object", "null"], "additionalProperties": true },
+              "quality": { "type": "object", "additionalProperties": true }
+            },
+            "additionalProperties": true
+          },
           "thumbnailDataUrl": { "type": ["string", "null"] },
           "annotations": {
             "type": "array",

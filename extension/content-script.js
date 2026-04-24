@@ -125,9 +125,20 @@ function getElementLabel(el) {
 
   const htmlEl = el;
   if (htmlEl.getAttribute) {
-    const aria = htmlEl.getAttribute("aria-label") || htmlEl.getAttribute("aria-labelledby");
+    const aria = htmlEl.getAttribute("aria-label");
     if (aria) {
       return normalizeText(aria, 100);
+    }
+
+    const labelledBy = htmlEl.getAttribute("aria-labelledby");
+    if (labelledBy) {
+      const labelText = labelledBy
+        .split(/\s+/)
+        .map((id) => document.getElementById(id)?.textContent || "")
+        .join(" ");
+      if (labelText) {
+        return normalizeText(labelText, 100);
+      }
     }
   }
 
@@ -146,19 +157,234 @@ function getElementLabel(el) {
   return "";
 }
 
+function getElementHref(el) {
+  if (!(el instanceof Element)) {
+    return null;
+  }
+  const anchor = el.closest("a[href]");
+  if (anchor instanceof HTMLAnchorElement) {
+    return normalizeText(anchor.href, 240) || null;
+  }
+  return null;
+}
+
+function getImplicitRole(el) {
+  if (!(el instanceof Element)) {
+    return null;
+  }
+
+  const tag = el.tagName.toLowerCase();
+  if (tag === "a" && el.hasAttribute("href")) {
+    return "link";
+  }
+  if (tag === "button") {
+    return "button";
+  }
+  if (tag === "select") {
+    return "combobox";
+  }
+  if (tag === "textarea") {
+    return "textbox";
+  }
+  if (tag === "input") {
+    const type = String(el.getAttribute("type") || "text").toLowerCase();
+    if (type === "checkbox") {
+      return "checkbox";
+    }
+    if (type === "radio") {
+      return "radio";
+    }
+    if (type === "range") {
+      return "slider";
+    }
+    if (["button", "submit", "reset"].includes(type)) {
+      return "button";
+    }
+    if (!["hidden", "file"].includes(type)) {
+      return "textbox";
+    }
+  }
+  return null;
+}
+
+function getAccessibleName(el) {
+  if (!(el instanceof Element)) {
+    return "";
+  }
+
+  const explicitLabel = getElementLabel(el);
+  if (explicitLabel) {
+    return explicitLabel;
+  }
+
+  const alt = el.getAttribute("alt");
+  if (alt) {
+    return normalizeText(alt, 100);
+  }
+
+  const title = el.getAttribute("title");
+  if (title) {
+    return normalizeText(title, 100);
+  }
+
+  const placeholder = el.getAttribute("placeholder");
+  if (placeholder) {
+    return normalizeText(placeholder, 100);
+  }
+
+  if (el instanceof HTMLInputElement && ["button", "submit", "reset"].includes(el.type)) {
+    return normalizeText(el.value, 100);
+  }
+
+  return normalizeText(el.textContent || "", 100);
+}
+
+function buildElementRect(el) {
+  if (!(el instanceof Element)) {
+    return null;
+  }
+
+  const rect = el.getBoundingClientRect();
+  return {
+    x: Math.round(rect.x),
+    y: Math.round(rect.y),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height)
+  };
+}
+
+function buildViewportMeta() {
+  return {
+    width: Math.round(window.innerWidth || 0),
+    height: Math.round(window.innerHeight || 0),
+    scrollX: Math.round(window.scrollX || 0),
+    scrollY: Math.round(window.scrollY || 0)
+  };
+}
+
+function buildVisibilityMeta(el, rect) {
+  if (!(el instanceof Element) || !rect) {
+    return null;
+  }
+
+  let style = null;
+  try {
+    style = window.getComputedStyle(el);
+  } catch {
+    style = null;
+  }
+
+  const hasBox = rect.width > 0 && rect.height > 0;
+  const inViewport =
+    hasBox &&
+    rect.x < window.innerWidth &&
+    rect.y < window.innerHeight &&
+    rect.x + rect.width > 0 &&
+    rect.y + rect.height > 0;
+  const styleVisible =
+    !style ||
+    (style.visibility !== "hidden" &&
+      style.display !== "none" &&
+      Number.parseFloat(style.opacity || "1") > 0.01);
+
+  return {
+    hasBox,
+    inViewport,
+    styleVisible,
+    likelyVisible: Boolean(hasBox && inViewport && styleVisible)
+  };
+}
+
+function buildValueMeta(el) {
+  if (!(el instanceof Element)) {
+    return null;
+  }
+
+  if (el instanceof HTMLSelectElement) {
+    return {
+      kind: "select",
+      hasValue: Boolean(el.value),
+      length: String(el.value || "").length,
+      captured: "option"
+    };
+  }
+
+  if (el instanceof HTMLInputElement) {
+    const type = String(el.type || "text").toLowerCase();
+    if (["password", "hidden", "file"].includes(type)) {
+      return { kind: type, captured: "blocked" };
+    }
+    if (type === "checkbox" || type === "radio") {
+      return { kind: type, checked: Boolean(el.checked), captured: "state" };
+    }
+    return {
+      kind: type || "text",
+      hasValue: Boolean(el.value),
+      length: String(el.value || "").length,
+      captured: "safe-text"
+    };
+  }
+
+  if (el instanceof HTMLTextAreaElement) {
+    return {
+      kind: "textarea",
+      hasValue: Boolean(el.value),
+      length: String(el.value || "").length,
+      captured: "safe-text"
+    };
+  }
+
+  return null;
+}
+
+function buildQualityMeta(el, accessibleName, rect, visibility) {
+  if (!(el instanceof Element)) {
+    return { score: 0.3, signals: ["page"] };
+  }
+
+  const signals = [];
+  let score = 0.35;
+  if (accessibleName) {
+    score += 0.25;
+    signals.push("name");
+  }
+  if (el.id || el.getAttribute("name") || el.getAttribute("data-testid")) {
+    score += 0.2;
+    signals.push("stable-attribute");
+  }
+  if (rect && rect.width > 0 && rect.height > 0) {
+    score += 0.1;
+    signals.push("rect");
+  }
+  if (visibility?.likelyVisible) {
+    score += 0.1;
+    signals.push("visible");
+  }
+
+  return {
+    score: Math.round(Math.min(score, 1) * 100) / 100,
+    signals
+  };
+}
+
 function buildTargetMeta(el) {
   if (!(el instanceof Element)) {
     return null;
   }
+
+  const accessibleName = getAccessibleName(el);
+  const semanticRole = (el.getAttribute("role") || getImplicitRole(el) || "") || null;
 
   return {
     tag: el.tagName.toLowerCase(),
     id: el.id || null,
     name: (el.getAttribute("name") || "") || null,
     type: (el.getAttribute("type") || "") || null,
-    role: (el.getAttribute("role") || "") || null,
+    role: semanticRole,
     placeholder: (el.getAttribute("placeholder") || "") || null,
     label: getElementLabel(el) || null,
+    accessibleName: accessibleName || null,
+    href: getElementHref(el),
     text: normalizeText(el.textContent || "", 80) || null
   };
 }
@@ -170,6 +396,37 @@ function buildSelectors(el) {
   };
 }
 
+function buildEvidence(el) {
+  const viewport = buildViewportMeta();
+  if (!(el instanceof Element)) {
+    return {
+      viewport,
+      quality: buildQualityMeta(null, "", null, null)
+    };
+  }
+
+  const rect = buildElementRect(el);
+  const visibility = buildVisibilityMeta(el, rect);
+  const accessibleName = getAccessibleName(el);
+  const role = (el.getAttribute("role") || getImplicitRole(el) || "") || null;
+
+  return {
+    semantic: {
+      tag: el.tagName.toLowerCase(),
+      role,
+      type: (el.getAttribute("type") || "") || null,
+      accessibleName: accessibleName || null,
+      label: getElementLabel(el) || null,
+      href: getElementHref(el)
+    },
+    rect,
+    viewport,
+    visibility,
+    value: buildValueMeta(el),
+    quality: buildQualityMeta(el, accessibleName, rect, visibility)
+  };
+}
+
 function buildBasePayload(kind, el = null) {
   return {
     kind,
@@ -177,7 +434,8 @@ function buildBasePayload(kind, el = null) {
     title: document.title || "",
     ts: Date.now(),
     target: buildTargetMeta(el),
-    selectors: buildSelectors(el)
+    selectors: buildSelectors(el),
+    evidence: buildEvidence(el)
   };
 }
 

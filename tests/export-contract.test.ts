@@ -25,6 +25,32 @@ const basePayload = {
       url: "https://example.com/a",
       pageTitle: "A",
       at: 1100,
+      target: {
+        tag: "button",
+        role: "button",
+        label: "Save",
+        accessibleName: "Save",
+        href: null
+      },
+      selectors: {
+        css: "#save",
+        xpath: "//*[@id=\"save\"]"
+      },
+      evidence: {
+        semantic: {
+          tag: "button",
+          role: "button",
+          type: null,
+          accessibleName: "Save",
+          label: "Save",
+          href: null
+        },
+        rect: { x: 24, y: 48, width: 80, height: 32 },
+        viewport: { width: 1280, height: 720, scrollX: 0, scrollY: 0 },
+        visibility: { hasBox: true, inViewport: true, styleVisible: true, likelyVisible: true },
+        value: null,
+        quality: { score: 0.9, signals: ["name", "stable-attribute", "rect", "visible"] }
+      },
       annotations: [
         { id: "ann_1", x: 0.1, y: 0.2, width: 0.3, height: 0.4, type: "highlight" },
         { id: "ann_2", x: 0.2, y: 0.2, width: 0.3, height: 0.3, type: "redact" }
@@ -88,6 +114,12 @@ validateExportShape(built);
 validateAgainstDocumentedSchema(built);
 assert.equal(built.session.id, "sess_1", "session id should persist");
 assert.equal(built.steps[0].annotations[1].type, "redact", "redact annotation should persist");
+assert.equal(built.steps[0].target.accessibleName, "Save", "target accessibleName should persist");
+assert.equal(built.steps[0].evidence.semantic.accessibleName, "Save", "semantic evidence should persist");
+assert.equal(built.steps[0].evidence.rect.width, 80, "element rect evidence should persist");
+assert.equal(built.steps[0].evidence.viewport.width, 1280, "viewport evidence should persist");
+assert.equal(built.steps[0].evidence.visibility.likelyVisible, true, "visibility evidence should persist");
+assert.equal(built.steps[0].evidence.quality.score, 0.9, "quality evidence should persist");
 
 // Validate roundtrip of minimal payload with missing fields
 const minimal = {

@@ -1440,6 +1440,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         fromHref: message.payload?.fromHref ?? null,
         target: message.payload?.target ?? null,
         selectors: message.payload?.selectors ?? null,
+        evidence: message.payload?.evidence ?? null,
         thumbnailDataUrl: null,
         annotations: []
       };
